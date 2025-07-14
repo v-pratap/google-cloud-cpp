@@ -41,6 +41,7 @@ OpenObject::OpenObject(storage_internal::StorageStub& stub, CompletionQueue& cq,
       initial_request_(std::move(request)) {}
 
 future<StatusOr<OpenStreamResult>> OpenObject::Call() {
+  std::cout << "OpenObject::Call called" << std::endl;
   auto future = promise_.get_future();
   rpc_->Start().then([w = WeakFromThis()](auto f) {
     if (auto self = w.lock()) self->OnStart(f.get());
@@ -63,6 +64,7 @@ std::unique_ptr<OpenStream::StreamingRpc> OpenObject::CreateRpc(
 }
 
 void OpenObject::OnStart(bool ok) {
+  std::cout << "OpenObject::OnStart called" << std::endl;
   if (!ok) return DoFinish();
   rpc_->Write(initial_request_).then([w = WeakFromThis()](auto f) {
     if (auto self = w.lock()) self->OnWrite(f.get());
@@ -78,6 +80,7 @@ void OpenObject::OnWrite(bool ok) {
 
 void OpenObject::OnRead(
     absl::optional<google::storage::v2::BidiReadObjectResponse> response) {
+      std::cout << "OpenObject::OnRead called" << std::endl;
   if (!response) return DoFinish();
   promise_.set_value(OpenStreamResult{std::move(rpc_), std::move(*response)});
 }
@@ -89,6 +92,7 @@ void OpenObject::DoFinish() {
 }
 
 void OpenObject::OnFinish(Status status) {
+  std::cout << "OpenObject::OnFinish called" << std::endl;
   if (!status.ok()) return promise_.set_value(std::move(status));
   // This should not happen, it indicates an EOF on the stream, but we
   // did not ask to close it.

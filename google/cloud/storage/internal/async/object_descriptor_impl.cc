@@ -16,6 +16,7 @@
 #include "google/cloud/storage/async/options.h"
 #include "google/cloud/storage/internal/async/handle_redirect_error.h"
 #include "google/cloud/storage/internal/async/object_descriptor_reader_tracing.h"
+#include "google/cloud/opentelemetry_options.h"
 #include "google/cloud/storage/internal/hash_function.h"
 #include "google/cloud/storage/internal/hash_function_impl.h"
 #include "google/cloud/grpc_error_delegate.h"
@@ -57,6 +58,8 @@ absl::optional<google::storage::v2::Object> ObjectDescriptorImpl::metadata()
 
 std::unique_ptr<storage_experimental::AsyncReaderConnection>
 ObjectDescriptorImpl::Read(ReadParams p) {
+  std::cout << "ObjectDescriptorImpl::Read called with "
+            << p.start << " and " << p.length << std::endl;
   std::shared_ptr<storage::internal::HashFunction> hash_function =
       std::shared_ptr<storage::internal::HashFunction>(
           storage::internal::CreateNullHashFunction());
@@ -75,12 +78,17 @@ ObjectDescriptorImpl::Read(ReadParams p) {
   read_range.set_read_offset(p.start);
   read_range.set_read_length(p.length);
   Flush(std::move(lk));
-
+  std::cout << "Trace debugger:\n";
+  std::cout << options_.get<google::cloud::OpenTelemetryTracingOption>()
+            << " - Tracing enabled: "
+            << internal::TracingEnabled(options_) << std::endl;
+  std::cout<< "read object spec bucket: " << read_object_spec_.bucket() << " read object spec object: " << read_object_spec_.object() <<"\n";
   if (!internal::TracingEnabled(options_)) {
+    std::cout << "Returning ObjectDescriptorReader without tracing" << std::endl;
     return std::unique_ptr<storage_experimental::AsyncReaderConnection>(
         std::make_unique<ObjectDescriptorReader>(std::move(range)));
   }
-
+  std::cout << "Returning TracingObjectDescriptorReader" << std::endl;
   return MakeTracingObjectDescriptorReader(std::move(range));
 }
 

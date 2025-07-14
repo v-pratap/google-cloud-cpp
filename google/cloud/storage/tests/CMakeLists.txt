@@ -94,6 +94,7 @@ foreach (fname IN LISTS storage_client_integration_tests)
                 google_cloud_cpp_testing
                 google-cloud-cpp::storage
                 google-cloud-cpp::common
+                google-cloud-cpp::opentelemetry
                 GTest::gmock_main
                 GTest::gmock
                 GTest::gtest
@@ -103,7 +104,7 @@ foreach (fname IN LISTS storage_client_integration_tests)
     if (GOOGLE_CLOUD_CPP_STORAGE_ENABLE_GRPC)
         target_link_libraries(
             ${target}
-            PRIVATE google-cloud-cpp::storage google_cloud_cpp_testing_grpc
+            PRIVATE google-cloud-cpp::storage google_cloud_cpp_testing_grpc google-cloud-cpp::opentelemetry
                     google_cloud_cpp_storage_tests_conformance_protos)
     endif ()
 

@@ -59,6 +59,8 @@ future<StatusOr<ObjectDescriptor>> AsyncClient::Open(
 
 future<StatusOr<ObjectDescriptor>> AsyncClient::Open(
     google::storage::v2::BidiReadObjectSpec spec, Options opts) {
+      std::cout<< "AsyncClient::Open called with spec: "
+                << spec.DebugString() << std::endl;
   return connection_
       ->Open({std::move(spec),
               internal::MergeOptions(std::move(opts), connection_->options())})

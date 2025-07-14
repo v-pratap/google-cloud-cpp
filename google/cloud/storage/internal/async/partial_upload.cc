@@ -47,12 +47,15 @@ void PartialUpload::Write() {
   auto& data = *request_.mutable_checksummed_data();
   SetContent(data, std::move(next));
   data.set_crc32c(crc32c);
+  std::cout << "Write request: " << request_.write_offset() << std::endl;
+  std::cout << "Write request crc32: " << crc32c << std::endl;
 
   auto wopt = grpc::WriteOptions{};
   auto const last_message = data_.empty();
   if (last_message) {
     if (action_ == LastMessageAction::kFinalizeWithChecksum) {
       auto status = Finalize(request_, wopt, *hash_function_);
+      std::cout<< "Finalize status: " << status << std::endl;
       if (!status.ok()) return WriteError(std::move(status));
     } else if (action_ == LastMessageAction::kFinalize) {
       request_.set_finish_write(true);

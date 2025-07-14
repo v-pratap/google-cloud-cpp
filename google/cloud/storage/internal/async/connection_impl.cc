@@ -14,6 +14,7 @@
 
 #include "google/cloud/storage/internal/async/connection_impl.h"
 #include "google/cloud/storage/async/idempotency_policy.h"
+#include "google/cloud/opentelemetry_options.h"
 #include "google/cloud/storage/async/options.h"
 #include "google/cloud/storage/async/read_all.h"
 #include "google/cloud/storage/async/reader.h"
@@ -194,8 +195,11 @@ future<StatusOr<google::storage::v2::Object>> AsyncConnectionImpl::InsertObject(
 future<
     StatusOr<std::shared_ptr<storage_experimental::ObjectDescriptorConnection>>>
 AsyncConnectionImpl::Open(OpenParams p) {
+  std::cout << "AsyncConnectionImpl::Open called" << std::endl;
+  std::cout << p.options.get<google::cloud::OpenTelemetryTracingOption>()
+            << std::endl;
   auto initial_request = google::storage::v2::BidiReadObjectRequest{};
-  *initial_request.mutable_read_object_spec() = p.read_spec;
+  *initial_request.mutable_read_object_spec() = std::move(p.read_spec);
   auto current = internal::MakeImmutableOptions(p.options);
   // Get the policy factory and immediately create a policy.
   auto resume_policy =
@@ -244,10 +248,11 @@ AsyncConnectionImpl::Open(OpenParams p) {
        options = std::move(p.options)](auto f) mutable -> StatusOr<ReturnType> {
         auto result = f.get();
         if (!result) return std::move(result).status();
-
+        std::cout << "OpenStreamFactory returned successfully" << std::endl;
         auto impl = std::make_shared<ObjectDescriptorImpl>(
             std::move(rp), std::move(fa), std::move(rs),
             std::move(result->stream), std::move(options));
+        std::cout<< "impl->start called" << std::endl;
         impl->Start(std::move(result->first_response));
         return ReturnType(impl);
       });
@@ -382,9 +387,11 @@ AsyncConnectionImpl::AppendableObjectUploadImpl(AppendableUploadParams p) {
        hash = std::move(hash_function), fa = std::move(factory)](auto f) mutable
       -> StatusOr<
           std::unique_ptr<storage_experimental::AsyncWriterConnection>> {
-        auto rpc = f.get();
+        auto git = f.get();
         if (!rpc) return std::move(rpc).status();
         persisted_size = rpc->first_response.resource().size();
+        std::cout << "rpc response::::::   " << rpc->first_response.resource().DebugString()
+                  << std::endl;
         auto impl = std::make_unique<AsyncWriterConnectionImpl>(
             current, request, std::move(rpc->stream), hash, persisted_size,
             false);
