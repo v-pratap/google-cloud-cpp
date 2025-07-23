@@ -48,14 +48,15 @@ void PartialUpload::Write() {
   SetContent(data, std::move(next));
   data.set_crc32c(crc32c);
   std::cout << "Write request: " << request_.write_offset() << std::endl;
-  std::cout << "Write request crc32: " << crc32c << std::endl;
+  std::cout << "Write request crc32c5: " << crc32c << std::endl;
+  
 
   auto wopt = grpc::WriteOptions{};
   auto const last_message = data_.empty();
   if (last_message) {
     if (action_ == LastMessageAction::kFinalizeWithChecksum) {
       auto status = Finalize(request_, wopt, *hash_function_);
-      std::cout<< "Finalize status: " << status << std::endl;
+      std::cout<< "Finalize status1: " << status << std::endl;
       if (!status.ok()) return WriteError(std::move(status));
     } else if (action_ == LastMessageAction::kFinalize) {
       request_.set_finish_write(true);
@@ -65,6 +66,8 @@ void PartialUpload::Write() {
       request_.set_state_lookup(true);
     }
   }
+  std::cout << "Write request bucket name " << request_.append_object_spec().DebugString() << std::endl;
+  std::cout << "Write object spec: " << request_.has_write_object_spec() << std::endl;
   (void)rpc_->Write(request_, std::move(wopt))
       .then([n, w = WeakFromThis()](auto f) {
         if (auto self = w.lock()) self->OnWrite(n, f.get());

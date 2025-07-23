@@ -243,7 +243,11 @@ Status FinalizeChecksums(google::storage::v2::ObjectChecksums& checksums,
   //
   // These conversions may fail, because the value is provided by the
   // application in some cases.
+   std::cout<< "hashes.crc32c::::  " << !hashes.crc32c.empty() <<"\n";
+   std::cout<< "hashes.md5::::   " << !hashes.md5.empty() <<"\n";
+   std::cout<<"hashes.crc32c::::...." << hashes.crc32c << "\n";
   if (!hashes.crc32c.empty()) {
+   
     auto as_proto = storage_internal::Crc32cToProto(hashes.crc32c);
     if (!as_proto) return std::move(as_proto).status();
     checksums.set_crc32c(*as_proto);

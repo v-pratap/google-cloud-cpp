@@ -121,7 +121,7 @@ TEST_F(AsyncClientIntegrationTest, StartAppendableUploadEmpty) {
   auto client = MakeGrpcClient(project_id);
 
   auto bucket_name = std::string{"vaibhavpratap-zb-3"};
-  auto object_name = "vaibhav-test-11";
+  auto object_name = "vaibhav-test-23";
   auto placement = gcs::BucketCustomPlacementConfig{{"us-west4-a"}};
   auto hns = gcs::BucketHierarchicalNamespace{true};
   auto ubla = gcs::BucketIamConfiguration{gcs::UniformBucketLevelAccess{true, {}}, absl::nullopt};
@@ -169,8 +169,6 @@ TEST_F(AsyncClientIntegrationTest, StartAppendableUploadEmpty) {
   auto object_metadata = client.GetObjectMetadata(bucket_name, object_name);
   auto m = *object_metadata;
   auto generation = m.generation();
-  std::cout << "Object metadata: " << m << std::endl;
-  EXPECT_EQ("ddd", "Sdf");
 
   auto w1 = async.ResumeAppendableObjectUpload(BucketName(bucket_name), object_name, generation)
                 .get();
@@ -180,24 +178,24 @@ TEST_F(AsyncClientIntegrationTest, StartAppendableUploadEmpty) {
   AsyncWriter writer1;
   AsyncToken token1;
   std::tie(writer1, token1) = *std::move(w1);
-  for (int i = 0; i < kBlockCount; ++i) {
-    std::cout << "Writing data iteration #" << i << std::endl;
-    auto p = writer1.Write(std::move(token1), WritePayload(block2)).get();
-    ASSERT_STATUS_OK(p);
-    token1 = *std::move(p);
-  }
+  // for (int i = 0; i < kBlockCount; ++i) {
+  //   std::cout << "Writing data iteration #" << i << std::endl;
+  //   auto p = writer1.Write(std::move(token1), WritePayload(block2)).get();
+  //   ASSERT_STATUS_OK(p);
+  //   token1 = *std::move(p);
+  // }
 
   auto object_metadata1 = client.GetObjectMetadata(bucket_name, object_name);
   auto m1 = *object_metadata1;
   auto generation1 = m1.generation();
   std::cout << "Object metadata1: " << m << std::endl;
   EXPECT_EQ("dddd", "Sdfs");
-  // auto metadata = writer1.Finalize(std::move(token1)).get();
-  // ASSERT_STATUS_OK(metadata);
-  // ScheduleForDelete(*metadata);
+  auto metadata = writer1.Finalize(std::move(token1)).get();
+  ASSERT_STATUS_OK(metadata);
+  // // ScheduleForDelete(*metadata);
 
-  // EXPECT_EQ(metadata->bucket(), BucketName(bucket_name).FullName());
-  // EXPECT_EQ(metadata->name()," object_name");
+  EXPECT_EQ(metadata->bucket(), BucketName(bucket_name).FullName());
+  EXPECT_EQ(metadata->name()," object_name");
   // EXPECT_EQ(metadata->size(), kBlockCount * kBlockSize);
 
 

@@ -312,7 +312,8 @@ AsyncConnectionImpl::ResumeAppendableObjectUpload(AppendableUploadParams p) {
 future<StatusOr<std::unique_ptr<storage_experimental::AsyncWriterConnection>>>
 AsyncConnectionImpl::AppendableObjectUploadImpl(AppendableUploadParams p) {
   auto current = internal::MakeImmutableOptions(std::move(p.options));
-  auto request = std::move(p.request);
+  auto request = p.request;
+  std::cout<<  "request string 1:::::::       "<<   request.append_object_spec().DebugString()<<std::endl;
   std::int64_t persisted_size = 0;
   std::shared_ptr<storage::internal::HashFunction> hash_function =
       CreateHashFunction(*current);
@@ -353,7 +354,7 @@ AsyncConnectionImpl::AppendableObjectUploadImpl(AppendableUploadParams p) {
             ApplyRoutingHeaders(*context, request.write_object_spec());
           else
             ApplyRoutingHeaders(*context, request.append_object_spec());
-
+          std::cout<<"CReating stub.......................\n";
           auto rpc = stub->AsyncBidiWriteObject(cq, std::move(context),
                                                 std::move(options));
           rpc = std::make_unique<StreamingRpcTimeout>(
@@ -364,6 +365,7 @@ AsyncConnectionImpl::AppendableObjectUploadImpl(AppendableUploadParams p) {
           return open->Call().then([open, &request](auto f) mutable {
             open.reset();
             auto response = f.get();
+            std::cout<<  "request string 2:::::::       "<<   request.append_object_spec().DebugString()<<std::endl;
             if (!response) {
               google::rpc::Status grpc_status =
                   ExtractGrpcStatus(response.status());
@@ -387,11 +389,12 @@ AsyncConnectionImpl::AppendableObjectUploadImpl(AppendableUploadParams p) {
        hash = std::move(hash_function), fa = std::move(factory)](auto f) mutable
       -> StatusOr<
           std::unique_ptr<storage_experimental::AsyncWriterConnection>> {
-        auto git = f.get();
+        auto rpc = f.get();
         if (!rpc) return std::move(rpc).status();
         persisted_size = rpc->first_response.resource().size();
-        std::cout << "rpc response::::::   " << rpc->first_response.resource().DebugString()
+        std::cout << "rpc response:::.................   " << rpc->first_response.resource().DebugString()
                   << std::endl;
+        std::cout << "request3::::..................." << request.DebugString() <<std::endl;
         auto impl = std::make_unique<AsyncWriterConnectionImpl>(
             current, request, std::move(rpc->stream), hash, persisted_size,
             false);

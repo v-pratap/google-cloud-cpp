@@ -58,6 +58,7 @@ class AsyncStreamingReadWriteRpcImpl
   void Cancel() override { context_->TryCancel(); }
 
   future<bool> Start() override {
+    std::cout<<"It is coming into start1..................\n";
     struct OnStart : public AsyncGrpcOperation {
       explicit OnStart(ImmutableOptions o) : call_context(std::move(o)) {}
 
@@ -103,6 +104,7 @@ class AsyncStreamingReadWriteRpcImpl
 
   future<bool> Write(Request const& request,
                      grpc::WriteOptions options) override {
+                      std::cout<<"It is coming into write1..................\n";
     struct OnWrite : public AsyncGrpcOperation {
       explicit OnWrite(ImmutableOptions o) : call_context(std::move(o)) {}
 
@@ -124,6 +126,7 @@ class AsyncStreamingReadWriteRpcImpl
   }
 
   future<bool> WritesDone() override {
+    std::cout<<"It is coming into writes done..................\n";
     struct OnWritesDone : public AsyncGrpcOperation {
       explicit OnWritesDone(ImmutableOptions o) : call_context(std::move(o)) {}
 
@@ -143,12 +146,15 @@ class AsyncStreamingReadWriteRpcImpl
   }
 
   future<Status> Finish() override {
+    std::cout<<"It is coming into finish1..................\n";
     struct OnFinish : public AsyncGrpcOperation {
       explicit OnFinish(ImmutableOptions o) : call_context(std::move(o)) {}
 
       bool Notify(bool /*ok*/) override {
         ScopedCallContext scope(call_context);
-        p.set_value(MakeStatusFromRpcError(std::move(status)));
+        
+        p.set_value(MakeStatusFromRpcError((status)));
+        std::cout<< "Printing status in final :      " << status.error_message()<<"\t" << status.error_code() << "\n";
         return true;
       }
       void Cancel() override {}
@@ -158,6 +164,14 @@ class AsyncStreamingReadWriteRpcImpl
       grpc::Status status;
     };
     auto op = std::make_shared<OnFinish>(options_);
+    auto x = context_->GetServerInitialMetadata();
+    for (auto it: x){
+      std::cout<<it.first << " " << it.second <<"\n";
+    }
+     auto y = context_->GetServerTrailingMetadata();
+    for (auto it: y){
+      std::cout<<it.first << " " << it.second <<"\n";
+    }
     cq_->StartOperation(op,
                         [&](void* tag) { stream_->Finish(&op->status, tag); });
     return op->p.get_future();

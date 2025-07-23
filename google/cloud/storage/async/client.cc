@@ -155,8 +155,14 @@ AsyncClient::ResumeAppendableObjectUpload(BucketName const& bucket_name,
   auto& append_object_spec = *request.mutable_append_object_spec();
 
   append_object_spec.set_bucket(BucketName(bucket_name).FullName());
-  append_object_spec.set_object(std::move(object_name));
+  append_object_spec.set_object(object_name);
   append_object_spec.set_generation(generation);
+
+  // auto& resource = *request.mutable_write_object_spec()->mutable_resource();
+
+  // resource.set_bucket(BucketName(bucket_name).FullName());
+  // resource.set_name(object_name);
+  // request.mutable_write_object_spec()->set_appendable(true);
 
   return connection_
       ->ResumeAppendableObjectUpload(

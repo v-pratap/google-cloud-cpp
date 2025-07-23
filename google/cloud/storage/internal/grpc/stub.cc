@@ -598,6 +598,7 @@ StatusOr<storage::internal::EmptyResponse> GrpcStub::DeleteResumableUpload(
 StatusOr<storage::internal::QueryResumableUploadResponse> GrpcStub::UploadChunk(
     rest_internal::RestContext& context, Options const& options,
     storage::internal::UploadChunkRequest const& request) {
+      std::cout<<"It is coming to upload chunk\n";
   auto proto_request = google::storage::v2::WriteObjectRequest{};
   proto_request.set_upload_id(request.upload_session_url());
 

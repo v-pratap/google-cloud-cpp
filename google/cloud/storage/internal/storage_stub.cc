@@ -251,6 +251,7 @@ DefaultStorageStub::AsyncBidiWriteObject(
     google::cloud::CompletionQueue const& cq,
     std::shared_ptr<grpc::ClientContext> context,
     google::cloud::internal::ImmutableOptions options) {
+      std::cout<<"It is coming in bidiWrite..............................\n";
   return google::cloud::internal::MakeStreamingReadWriteRpc<
       google::storage::v2::BidiWriteObjectRequest,
       google::storage::v2::BidiWriteObjectResponse>(

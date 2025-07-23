@@ -130,14 +130,18 @@ AsyncWriterConnectionImpl::Finalize(
     storage_experimental::WritePayload payload) {
   auto write = MakeRequest();
   write.set_finish_write(true);
+  
 
   auto p = WritePayloadImpl::GetImpl(payload);
   auto size = p.size();
+  std::cout<< "request has append object spec:   " << request_.has_append_object_spec() << std::endl;
   auto action = request_.has_append_object_spec()
                     ? PartialUpload::kFinalizeWithChecksum
                     : PartialUpload::kFinalizeWithChecksum;
+  std::cout << "bucket name4:   " << write.append_object_spec().bucket() <<"\n";
   auto coro = PartialUpload::Call(impl_, hash_function_, std::move(write),
                                   std::move(p), std::move(action));
+  
   return coro->Start().then([coro, size, this](auto f) mutable {
     coro.reset();  // breaks the cycle between the completion queue and coro
     return OnFinalUpload(size, f.get());
@@ -169,6 +173,7 @@ RpcMetadata AsyncWriterConnectionImpl::GetRequestMetadata() {
 google::storage::v2::BidiWriteObjectRequest
 AsyncWriterConnectionImpl::MakeRequest() {
   auto request = request_;
+  std::cout<<"request 4:   " << request_.append_object_spec().DebugString() <<"\n";
   if (first_request_) {
     first_request_ = false;
   } else {
@@ -177,6 +182,12 @@ AsyncWriterConnectionImpl::MakeRequest() {
     request.clear_append_object_spec();
   }
   request.set_write_offset(offset_);
+  auto& x = *request.mutable_append_object_spec();
+  x.set_bucket(request_.append_object_spec().bucket());
+  std::cout << "bucket name4:   " << request_.append_object_spec().bucket() <<"\n";
+  std::cout << "bucket name04:   " << request.append_object_spec().bucket() <<"\n";
+  std::cout << "write object spec :   " << request.has_write_object_spec() <<"\n";
+  // x.bucket= request_.append_object_spec().bucket;
   return request;
 }
 
