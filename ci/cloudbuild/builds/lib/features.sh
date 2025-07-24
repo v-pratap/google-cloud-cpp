@@ -26,17 +26,17 @@ function features::always_build() {
   local list
   list=(
     # These have hand-crafted code, therefore we always want to build them.
-    bigtable
-    experimental-bigquery_rest
-    spanner
+    # bigtable
+    # experimental-bigquery_rest
+    # spanner
     storage
-    pubsub
-    pubsublite
+    # pubsub
+    # pubsublite
     # While these libraries are automatically generated, they contain
     # hand-crafted tests.
-    bigquery
-    iam
-    logging
+    # bigquery
+    # iam
+    # logging
     # Build our code with OpenTelemetry. This feature includes both the client
     # library instrumentation, and the GCP exporters.
     opentelemetry

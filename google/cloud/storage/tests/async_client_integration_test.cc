@@ -70,10 +70,10 @@ private:
 
 namespace gcs = ::google::cloud::storage;
 
-auto AlwaysRetry() {
-  return google::cloud::Options{}.set<google::cloud::storage_experimental::IdempotencyPolicyOption>(
-      MakeAlwaysRetryIdempotencyPolicy);
-}
+// auto AlwaysRetry() {
+//   return google::cloud::Options{}.set<google::cloud::storage_experimental::IdempotencyPolicyOption>(
+//       MakeAlwaysRetryIdempotencyPolicy);
+// }
 
 google::cloud::Options MakeOptions(google::cloud::Options opts) {
   auto fallback = google::cloud::Options{};
@@ -93,11 +93,11 @@ google::cloud::Options MakeOptions(google::cloud::Options opts) {
   return google::cloud::internal::MergeOptions(std::move(opts), fallback);
 }
 
-storage::Client MakeRestClient(std::string project_id) {
-  auto opts = MakeOptions(google::cloud::Options{}
-                      .set<google::cloud::storage::ProjectIdOption>(project_id));
-  return storage::Client(std::move(opts));
-}
+// storage::Client MakeRestClient(std::string project_id) {
+//   auto opts = MakeOptions(google::cloud::Options{}
+//                       .set<google::cloud::storage::ProjectIdOption>(project_id));
+//   return storage::Client(std::move(opts));
+// }
 
 google::cloud::storage::Client MakeGrpcClient(std::string project_id) {
   auto options = MakeOptions(google::cloud::Options{}
@@ -123,7 +123,7 @@ TEST_F(AsyncClientIntegrationTest, StartAppendableUploadEmpty) {
   auto bucket_name = std::string{"vaibhavpratap-zb-3"};
   auto object_name = "vaibhav-test-23";
   auto placement = gcs::BucketCustomPlacementConfig{{"us-west4-a"}};
-  auto hns = gcs::BucketHierarchicalNamespace{true};
+  // auto hns = gcs::BucketHierarchicalNamespace{true};
   auto ubla = gcs::BucketIamConfiguration{gcs::UniformBucketLevelAccess{true, {}}, absl::nullopt};
 
   // auto create = client.CreateBucket(
@@ -138,11 +138,11 @@ TEST_F(AsyncClientIntegrationTest, StartAppendableUploadEmpty) {
   //   std::cout << "Bucket successfully created." << std::endl;
   // }
 
-  auto bucket_metadata = client.GetBucketMetadata(bucket_name);
-  std::cout << "Bucket name is " << bucket_metadata->name() << std::endl;
+  // auto bucket_metadata = client.GetBucketMetadata(bucket_name);
+  // std::cout << "Bucket name is " << bucket_metadata->name() << std::endl;
 
   auto constexpr kBlockSize = 20 * 1024;
-  auto constexpr kBlockCount = 3;
+  // auto constexpr kBlockCount = 3;
   auto const block = MakeRandomData(kBlockSize);
   auto const block2 = MakeRandomData(kBlockSize);
 
@@ -187,7 +187,7 @@ TEST_F(AsyncClientIntegrationTest, StartAppendableUploadEmpty) {
 
   auto object_metadata1 = client.GetObjectMetadata(bucket_name, object_name);
   auto m1 = *object_metadata1;
-  auto generation1 = m1.generation();
+  // auto generation1 = m1.generation();
   std::cout << "Object metadata1: " << m << std::endl;
   EXPECT_EQ("dddd", "Sdfs");
   auto metadata = writer1.Finalize(std::move(token1)).get();
