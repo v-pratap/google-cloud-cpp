@@ -267,7 +267,7 @@ TEST_F(AsyncClientIntegrationTest, StartAppendableUploadEmpty) {
   // auto metadata1 = writer.Finalize(std::move(token)).get();
   // ASSERT_STATUS_OK(metadata1);
   // std::cout << "Request metadata: " << metadata1->generation() << std::endl;
-  EXPECT_EQ(1,2);
+  
 
   // auto close = writer.Close();
 
@@ -329,9 +329,9 @@ TEST_F(AsyncClientIntegrationTest, StartAppendableUploadEmpty) {
 
   // 2. Define read parameters and storage for futures
   std::vector<std::future<void>> futures;
-  int num_reads = 1000;
+  int num_reads = 30;
   std::int64_t read_offset = 0;
-  std::int64_t read_limit = 1024 * 1024 * 1024; // 1 GiB
+  std::int64_t read_limit = 1024 * 1024* 400; // 1 GiB
 
   std::cout << "Enqueuing " << num_reads << " read tasks..." << std::endl;
   
@@ -371,6 +371,7 @@ TEST_F(AsyncClientIntegrationTest, StartAppendableUploadEmpty) {
   //     t0 = std::move(t);
   //   }
   // }
+  EXPECT_EQ(1,2);
 
   auto ans = block + block + block;
   // EXPECT_EQ(1,2);

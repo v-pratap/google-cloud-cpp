@@ -47,6 +47,7 @@ class ObjectDescriptorImpl
     google::storage::v2::BidiReadObjectRequest next_request;
     bool write_pending = false;
   };
+  using stream_iterator = std::list<Stream>::iterator;
 
  public:
   ObjectDescriptorImpl(
@@ -81,24 +82,18 @@ class ObjectDescriptorImpl
 
   void AssurePendingStreamQueued();
 
-  void Flush(std::unique_lock<std::mutex> lk,
-             typename std::list<Stream>::iterator it);
-  void OnWrite(typename std::list<Stream>::iterator it, bool ok);
-  void DoRead(std::unique_lock<std::mutex>,
-              typename std::list<Stream>::iterator it);
+  void Flush(std::unique_lock<std::mutex> lk, stream_iterator it);
+  void OnWrite(stream_iterator it, bool ok);
+  void DoRead(std::unique_lock<std::mutex>, stream_iterator it);
   void OnRead(
-      typename std::list<Stream>::iterator it,
+      stream_iterator it,
       absl::optional<google::storage::v2::BidiReadObjectResponse> response);
-  void CleanupDoneRanges(std::unique_lock<std::mutex> const&,
-                         typename std::list<Stream>::iterator it);
-  void DoFinish(std::unique_lock<std::mutex>,
-                typename std::list<Stream>::iterator it);
-  void OnFinish(typename std::list<Stream>::iterator it, Status const& status);
-  void Resume(typename std::list<Stream>::iterator it,
-              google::rpc::Status const& proto_status);
-  void OnResume(typename std::list<Stream>::iterator it,
-                StatusOr<OpenStreamResult> result);
-  bool IsResumable(typename std::list<Stream>::iterator it, Status const& status,
+  void CleanupDoneRanges(stream_iterator it);
+  void DoFinish(std::unique_lock<std::mutex>, stream_iterator it);
+  void OnFinish(stream_iterator it, Status const& status);
+  void Resume(stream_iterator it, google::rpc::Status const& proto_status);
+  void OnResume(stream_iterator it, StatusOr<OpenStreamResult> result);
+  bool IsResumable(stream_iterator it, Status const& status,
                    google::rpc::Status const& proto_status);
 
   std::unique_ptr<storage_experimental::ResumePolicy> resume_policy_prototype_;

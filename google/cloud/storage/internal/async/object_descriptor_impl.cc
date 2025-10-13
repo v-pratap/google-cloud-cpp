@@ -150,7 +150,7 @@ ObjectDescriptorImpl::Read(ReadParams p) {
 }
 
 void ObjectDescriptorImpl::Flush(std::unique_lock<std::mutex> lk,
-                                 typename std::list<Stream>::iterator it) {
+                                 ObjectDescriptorImpl::stream_iterator it) {
   if (it->write_pending || it->next_request.read_ranges().empty()) {
     return;
   }
@@ -164,7 +164,7 @@ void ObjectDescriptorImpl::Flush(std::unique_lock<std::mutex> lk,
   });
 }
 
-void ObjectDescriptorImpl::OnWrite(typename std::list<Stream>::iterator it,
+void ObjectDescriptorImpl::OnWrite(ObjectDescriptorImpl::stream_iterator it,
                                    bool ok) {
   std::unique_lock<std::mutex> lk(mu_);
   if (!ok) return DoFinish(std::move(lk), it);
@@ -173,7 +173,7 @@ void ObjectDescriptorImpl::OnWrite(typename std::list<Stream>::iterator it,
 }
 
 void ObjectDescriptorImpl::DoRead(std::unique_lock<std::mutex> lk,
-                                  typename std::list<Stream>::iterator it) {
+                                  ObjectDescriptorImpl::stream_iterator it) {
   lk.unlock();
   it->stream->Read().then([w = WeakFromThis(), it](auto f) {
     if (auto self = w.lock()) self->OnRead(it, f.get());
@@ -181,7 +181,7 @@ void ObjectDescriptorImpl::DoRead(std::unique_lock<std::mutex> lk,
 }
 
 void ObjectDescriptorImpl::OnRead(
-    typename std::list<Stream>::iterator it,
+    ObjectDescriptorImpl::stream_iterator it,
     absl::optional<google::storage::v2::BidiReadObjectResponse> response) {
   std::unique_lock<std::mutex> lk(mu_);
   if (!response) return DoFinish(std::move(lk), it);
@@ -205,12 +205,12 @@ void ObjectDescriptorImpl::OnRead(
     l->second->OnRead(std::move(range_data));
   }
   lk.lock();
-  CleanupDoneRanges(lk, it);
+  CleanupDoneRanges(it);
   DoRead(std::move(lk), it);
 }
 
 void ObjectDescriptorImpl::CleanupDoneRanges(
-    std::unique_lock<std::mutex> const&, typename std::list<Stream>::iterator it) {
+    ObjectDescriptorImpl::stream_iterator it) {
   auto& active_ranges = it->active_ranges;
   for (auto i = active_ranges.begin(); i != active_ranges.end();) {
     if (i->second->IsDone()) {
@@ -222,7 +222,7 @@ void ObjectDescriptorImpl::CleanupDoneRanges(
 }
 
 void ObjectDescriptorImpl::DoFinish(std::unique_lock<std::mutex> lk,
-                                    typename std::list<Stream>::iterator it) {
+                                    ObjectDescriptorImpl::stream_iterator it) {
   lk.unlock();
   auto pending = it->stream->Finish();
   if (!pending.valid()) return;
@@ -231,7 +231,7 @@ void ObjectDescriptorImpl::DoFinish(std::unique_lock<std::mutex> lk,
   });
 }
 
-void ObjectDescriptorImpl::OnFinish(typename std::list<Stream>::iterator it,
+void ObjectDescriptorImpl::OnFinish(ObjectDescriptorImpl::stream_iterator it,
                                     Status const& status) {
   auto proto_status = ExtractGrpcStatus(status);
 
@@ -247,7 +247,7 @@ void ObjectDescriptorImpl::OnFinish(typename std::list<Stream>::iterator it,
   }
 }
 
-void ObjectDescriptorImpl::Resume(typename std::list<Stream>::iterator it,
+void ObjectDescriptorImpl::Resume(ObjectDescriptorImpl::stream_iterator it,
                                   google::rpc::Status const& proto_status) {
   std::unique_lock<std::mutex> lk(mu_);
   // This call needs to happen inside the lock, as it may modify
@@ -266,7 +266,7 @@ void ObjectDescriptorImpl::Resume(typename std::list<Stream>::iterator it,
   });
 }
 
-void ObjectDescriptorImpl::OnResume(typename std::list<Stream>::iterator it,
+void ObjectDescriptorImpl::OnResume(ObjectDescriptorImpl::stream_iterator it,
                                     StatusOr<OpenStreamResult> result) {
   if (!result) return OnFinish(it, std::move(result).status());
   std::unique_lock<std::mutex> lk(mu_);
@@ -282,7 +282,7 @@ void ObjectDescriptorImpl::OnResume(typename std::list<Stream>::iterator it,
 }
 
 bool ObjectDescriptorImpl::IsResumable(
-    typename std::list<Stream>::iterator it, Status const& status,
+    ObjectDescriptorImpl::stream_iterator it, Status const& status,
     google::rpc::Status const& proto_status) {
   std::unique_lock<std::mutex> lk(mu_);
   for (auto const& any : proto_status.details()) {
@@ -306,7 +306,7 @@ bool ObjectDescriptorImpl::IsResumable(
       if (l != copy.end()) l->second->OnFinish(p.second);
     }
     lk.lock();
-    CleanupDoneRanges(lk, it);
+    CleanupDoneRanges(it);
     return true;
   }
   return it->resume_policy->OnFinish(status) ==
