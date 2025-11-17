@@ -21,7 +21,7 @@ endif ()
 
 # the client library
 add_library(
-    google_cloud_cpp_storage # cmake-format: sort
+    google_cloud_cpp_storage_rest # cmake-format: sort
     auto_finalize.cc
     auto_finalize.h
     bucket_access_control.cc
@@ -264,7 +264,7 @@ add_library(
     well_known_parameters.cc
     well_known_parameters.h)
 target_link_libraries(
-    google_cloud_cpp_storage
+    google_cloud_cpp_storage_rest
     PUBLIC absl::cord
            absl::memory
            absl::strings
@@ -277,19 +277,19 @@ target_link_libraries(
            CURL::libcurl
            Threads::Threads)
 if (WIN32)
-    target_compile_definitions(google_cloud_cpp_storage
+    target_compile_definitions(google_cloud_cpp_storage_rest
                                PRIVATE WIN32_LEAN_AND_MEAN)
     # We use `setsockopt()` directly, which requires the ws2_32 (Winsock2 for
     # Windows32?) library on Windows.
-    target_link_libraries(google_cloud_cpp_storage PUBLIC ws2_32 bcrypt)
+    target_link_libraries(google_cloud_cpp_storage_rest PUBLIC ws2_32 bcrypt)
 else ()
-    target_link_libraries(google_cloud_cpp_storage PUBLIC OpenSSL::Crypto)
+    target_link_libraries(google_cloud_cpp_storage_rest PUBLIC OpenSSL::Crypto)
 endif ()
 google_cloud_cpp_add_common_options(google_cloud_cpp_storage)
 target_include_directories(
-    google_cloud_cpp_storage PUBLIC $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}>
+    google_cloud_cpp_storage_rest PUBLIC $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}>
                                     $<INSTALL_INTERFACE:include>)
-target_compile_options(google_cloud_cpp_storage
+target_compile_options(google_cloud_cpp_storage_rest
                        PUBLIC ${GOOGLE_CLOUD_CPP_EXCEPTIONS_FLAG})
 
 # GCC-7.x issues a warning (a member variable may be used without being
@@ -305,13 +305,15 @@ if (${CMAKE_CXX_COMPILER_ID} STREQUAL "GNU" AND ${CMAKE_CXX_COMPILER_VERSION}
 endif ()
 
 set_target_properties(
-    google_cloud_cpp_storage
-    PROPERTIES EXPORT_NAME "google-cloud-cpp::storage"
+    google_cloud_cpp_storage_rest
+    PROPERTIES EXPORT_NAME "google-cloud-cpp::storage_rest"
                VERSION ${PROJECT_VERSION}
                SOVERSION ${PROJECT_VERSION_MAJOR})
-add_library(google-cloud-cpp::storage ALIAS google_cloud_cpp_storage)
+add_library(google-cloud-cpp::storage_rest ALIAS google_cloud_cpp_storage_rest)
+# Backwards-compatibility: keep google-cloud-cpp::storage pointing to REST
+add_library(google-cloud-cpp::storage ALIAS google_cloud_cpp_storage_rest)
 
-create_bazel_config(google_cloud_cpp_storage)
+create_bazel_config(google_cloud_cpp_storage_rest)
 
 # Export the CMake targets to make it easy to create configuration files.
 install(
@@ -320,7 +322,7 @@ install(
     COMPONENT google_cloud_cpp_development)
 
 install(
-    TARGETS google_cloud_cpp_storage
+    TARGETS google_cloud_cpp_storage_rest
     EXPORT storage-targets
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
             COMPONENT google_cloud_cpp_runtime
@@ -330,13 +332,13 @@ install(
     ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
             COMPONENT google_cloud_cpp_development)
 
-google_cloud_cpp_install_headers(google_cloud_cpp_storage
+google_cloud_cpp_install_headers(google_cloud_cpp_storage_rest
                                  include/google/cloud/storage)
 
 google_cloud_cpp_add_pkgconfig(
-    "storage"
+    "storage_rest"
     "The Google Cloud Storage C++ Client Library"
-    "Provides C++ APIs to access Google Cloud Storage."
+    "Provides C++ APIs to access Google Cloud Storage (REST/json)."
     "google_cloud_cpp_common"
     "google_cloud_cpp_rest_internal"
     "libcurl"
@@ -355,17 +357,17 @@ google_cloud_cpp_add_pkgconfig(
 
 # Create and install the CMake configuration files.
 include(CMakePackageConfigHelpers)
-configure_file("config.cmake.in" "google_cloud_cpp_storage-config.cmake" @ONLY)
+configure_file("config-rest.cmake.in" "google_cloud_cpp_storage_rest-config.cmake" @ONLY)
 write_basic_package_version_file(
-    "google_cloud_cpp_storage-config-version.cmake"
+    "google_cloud_cpp_storage_rest-config-version.cmake"
     VERSION ${PROJECT_VERSION}
     COMPATIBILITY ExactVersion)
 
 install(
     FILES
-        "${CMAKE_CURRENT_BINARY_DIR}/google_cloud_cpp_storage-config.cmake"
-        "${CMAKE_CURRENT_BINARY_DIR}/google_cloud_cpp_storage-config-version.cmake"
-    DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/google_cloud_cpp_storage"
+        "${CMAKE_CURRENT_BINARY_DIR}/google_cloud_cpp_storage_rest-config.cmake"
+        "${CMAKE_CURRENT_BINARY_DIR}/google_cloud_cpp_storage_rest-config-version.cmake"
+    DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/google_cloud_cpp_storage_rest"
     COMPONENT google_cloud_cpp_development)
 
 install(
