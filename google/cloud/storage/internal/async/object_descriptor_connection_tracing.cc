@@ -58,6 +58,21 @@ class AsyncObjectDescriptorConnectionTracing
     return MakeTracingReaderConnection(span_, std::move(result));
   }
 
+  std::vector<std::unique_ptr<storage::AsyncReaderConnection>> ReadVectored(std::vector<ReadParams> p) override {
+    internal::OTelScope scope(span_);
+    auto result = impl_->ReadVectored(p);
+    span_->AddEvent("gl-cpp.open.read_vectored",
+                    {{sc::thread::kThreadId, internal::CurrentThreadId()},
+                     {"range-count", static_cast<std::int64_t>(p.size())}});
+    
+    std::vector<std::unique_ptr<storage::AsyncReaderConnection>> traced_result;
+    traced_result.reserve(result.size());
+    for (auto& r : result) {
+      traced_result.push_back(MakeTracingReaderConnection(span_, std::move(r)));
+    }
+    return traced_result;
+  }
+
   void MakeSubsequentStream() override {
     return impl_->MakeSubsequentStream();
   };

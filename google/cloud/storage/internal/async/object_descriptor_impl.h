@@ -79,6 +79,9 @@ class ObjectDescriptorImpl
   // Start a new ranged read.
   std::unique_ptr<storage::AsyncReaderConnection> Read(ReadParams p) override;
 
+  // Start a new vectored ranged read.
+  std::vector<std::unique_ptr<storage::AsyncReaderConnection>> ReadVectored(std::vector<ReadParams> p) override;
+
   void MakeSubsequentStream() override;
 
   std::size_t StreamSize() const;

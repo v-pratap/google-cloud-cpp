@@ -38,6 +38,24 @@ std::pair<AsyncReader, AsyncToken> ObjectDescriptor::Read(std::int64_t offset,
   return {AsyncReader(std::move(reader)), std::move(token)};
 }
 
+std::vector<std::pair<AsyncReader, AsyncToken>> ObjectDescriptor::ReadVectored(
+    std::vector<std::pair<std::int64_t, std::int64_t>> ranges) {
+  std::vector<ObjectDescriptorConnection::ReadParams> params;
+  params.reserve(ranges.size());
+  for (auto const& r : ranges) {
+    params.push_back({r.first, r.second});
+  }
+
+  auto readers = impl_->ReadVectored(std::move(params));
+  std::vector<std::pair<AsyncReader, AsyncToken>> result;
+  result.reserve(readers.size());
+  for (auto& reader : readers) {
+    auto token = storage_internal::MakeAsyncToken(reader.get());
+    result.push_back({AsyncReader(std::move(reader)), std::move(token)});
+  }
+  return result;
+}
+
 std::pair<AsyncReader, AsyncToken> ObjectDescriptor::ReadFromOffset(
     std::int64_t offset) {
   auto reader = impl_->Read({offset, 0});

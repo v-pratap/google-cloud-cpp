@@ -188,6 +188,54 @@ std::unique_ptr<storage::AsyncReaderConnection> ObjectDescriptorImpl::Read(
   return MakeTracingObjectDescriptorReader(std::move(range));
 }
 
+std::vector<std::unique_ptr<storage::AsyncReaderConnection>> ObjectDescriptorImpl::ReadVectored(
+    std::vector<ReadParams> params) {
+  std::vector<std::unique_ptr<storage::AsyncReaderConnection>> result;
+  result.reserve(params.size());
+
+  std::unique_lock<std::mutex> lk(mu_);
+  if (stream_manager_->Empty()) {
+    lk.unlock();
+    for (auto const& p : params) {
+      auto range = std::make_shared<ReadRange>(p.start, p.length, std::shared_ptr<storage::internal::HashFunction>(storage::internal::CreateNullHashFunction()));
+      range->OnFinish(Status(StatusCode::kFailedPrecondition, "Cannot read object, all streams failed"));
+      result.push_back(std::make_unique<ObjectDescriptorReader>(std::move(range)));
+    }
+    return result;
+  }
+
+  auto it = stream_manager_->GetLeastBusyStream();
+  
+  for (auto const& p : params) {
+    std::shared_ptr<storage::internal::HashFunction> hash_function =
+        std::shared_ptr<storage::internal::HashFunction>(
+            storage::internal::CreateNullHashFunction());
+    if (options_.has<storage::EnableCrc32cValidationOption>()) {
+      hash_function =
+          std::make_shared<storage::internal::Crc32cMessageHashFunction>(
+              storage::internal::CreateNullHashFunction());
+    }
+    auto range = std::make_shared<ReadRange>(p.start, p.length, hash_function);
+
+    auto const id = ++read_id_generator_;
+    it->active_ranges.emplace(id, range);
+    auto& read_range = *it->stream->next_request.add_read_ranges();
+    read_range.set_read_id(id);
+    read_range.set_read_offset(p.start);
+    read_range.set_read_length(p.length);
+
+    if (!internal::TracingEnabled(options_)) {
+      result.push_back(std::make_unique<ObjectDescriptorReader>(std::move(range)));
+    } else {
+      result.push_back(MakeTracingObjectDescriptorReader(std::move(range)));
+    }
+  }
+
+  Flush(std::move(lk), it);
+
+  return result;
+}
+
 void ObjectDescriptorImpl::Flush(std::unique_lock<std::mutex> lk,
                                  StreamIterator it) {
   if (it->stream->write_pending ||

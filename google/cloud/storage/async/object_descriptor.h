@@ -24,6 +24,7 @@
 #include <cstdint>
 #include <memory>
 #include <utility>
+#include <vector>
 
 namespace google {
 namespace cloud {
@@ -64,6 +65,12 @@ class ObjectDescriptor {
    */
   std::pair<AsyncReader, AsyncToken> Read(std::int64_t offset,
                                           std::int64_t limit);
+
+  /**
+   * Starts a new vectored range read in the current descriptor.
+   */
+  std::vector<std::pair<AsyncReader, AsyncToken>> ReadVectored(
+      std::vector<std::pair<std::int64_t, std::int64_t>> ranges);
 
   /**
    * Starts a new read beginning at the supplied offset and continuing

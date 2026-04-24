@@ -22,6 +22,7 @@
 #include "google/storage/v2/storage.pb.h"
 #include <cstdint>
 #include <memory>
+#include <vector>
 
 namespace google {
 namespace cloud {
@@ -59,6 +60,7 @@ class ObjectDescriptorConnection {
    * Starts a new range read in the current descriptor.
    */
   virtual std::unique_ptr<AsyncReaderConnection> Read(ReadParams p) = 0;
+  virtual std::vector<std::unique_ptr<AsyncReaderConnection>> ReadVectored(std::vector<ReadParams> p) = 0;
 
   virtual void MakeSubsequentStream() = 0;
 
