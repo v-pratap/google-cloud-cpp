@@ -74,7 +74,6 @@ Options DefaultOptionsAsync(Options opts) {
               storage::StopOnConsecutiveErrorsResumePolicy())
           .set<storage::AsyncIdempotencyPolicyOption>(
               storage::MakeStrictAsyncIdempotencyPolicy)
-          .set<storage::EnableCrc32cValidationOption>(true)
           .set<storage::MaximumRangeSizeOption>(128 * 1024 * 1024L)
           .set<storage::EnableMultiStreamOptimizationOption>(true));
   return Adjust(DefaultOptionsGrpc(std::move(opts)));

@@ -16,6 +16,7 @@
 #define GOOGLE_CLOUD_CPP_GOOGLE_CLOUD_STORAGE_INTERNAL_HASH_FUNCTION_H
 
 #include "google/cloud/internal/disable_deprecation_warnings.inc"
+#include "google/cloud/options.h"
 #include "google/cloud/storage/hashing_options.h"
 #include "google/cloud/storage/internal/hash_values.h"
 #include "google/cloud/storage/version.h"
@@ -29,6 +30,9 @@ namespace google {
 namespace cloud {
 namespace storage {
 GOOGLE_CLOUD_CPP_INLINE_NAMESPACE_BEGIN
+
+
+
 namespace internal {
 
 class ReadObjectRangeRequest;
@@ -89,8 +93,7 @@ class HashFunction {
 /// Create a hash function configured by several options.
 std::unique_ptr<HashFunction> CreateHashFunction(
     Crc32cChecksumValue const& crc32c_value,
-    DisableCrc32cChecksum const& crc32c_disabled, MD5HashValue const& md5_value,
-    DisableMD5Hash const& md5_disabled);
+    MD5HashValue const& md5_value);
 
 /// Create a no-op hash function
 std::unique_ptr<HashFunction> CreateNullHashFunction();
@@ -102,6 +105,8 @@ std::unique_ptr<HashFunction> CreateHashFunction(
 /// Create a hash function configured by @p request.
 std::unique_ptr<HashFunction> CreateHashFunction(
     ResumableUploadRequest const& request);
+
+
 
 }  // namespace internal
 GOOGLE_CLOUD_CPP_INLINE_NAMESPACE_END

@@ -13,17 +13,6 @@
 // limitations under the License.
 
 #include "google/cloud/storage/async/options.h"
-
-// TODO: Remove this when EnableMD5ValidationOption and
-// EnableCrc32cValidationOption are removed.
-#if defined(__GNUC__) && !defined(__clang__)
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
-#elif defined(__clang__)
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
-#endif
-
 #include "google/cloud/storage/internal/async/connection_impl.h"
 #include "google/cloud/storage/internal/async/default_options.h"
 #include "google/cloud/storage/internal/crc32c.h"
@@ -91,11 +80,6 @@ std::ostream& operator<<(std::ostream& os, HashTestCase const& rhs) {
     os << ", download_checksum="
        << static_cast<int>(
               rhs.options.get<storage::DownloadChecksumValidationOption>());
-  } else {
-    os << ", enable_crc32c_validation="
-       << rhs.options.get<storage::EnableCrc32cValidationOption>();
-    os << ", enable_md5_validation="
-       << rhs.options.get<storage::EnableMD5ValidationOption>();
   }
   if (rhs.options.has<storage::UseCrc32cValueOption>()) {
     os << ", use_crc32_value="
@@ -155,12 +139,7 @@ INSTANTIATE_TEST_SUITE_P(
             Options{}.set<storage::DownloadChecksumValidationOption>(
                 storage::ChecksumAlgorithm::kCrc32c),
             kQuickFoxCrc32cChecksum, ""},
-        // Make sure things work when both hashes are validated too.
-        HashTestCase{StatusCode::kOk,
-                     Options{}
-                         .set<storage::EnableCrc32cValidationOption>(true)
-                         .set<storage::EnableMD5ValidationOption>(true),
-                     kQuickFoxCrc32cChecksum, kQuickFoxMD5Hash},
+
         // In the next three cases we verify that disabling some validation
         // works.
         HashTestCase{StatusCode::kOk,
@@ -183,10 +162,7 @@ INSTANTIATE_TEST_SUITE_P(
                      Options{}.set<storage::DownloadChecksumValidationOption>(
                          storage::ChecksumAlgorithm::kMD5),
                      kQuickFoxCrc32cChecksumBad, kQuickFoxMD5Hash},
-        HashTestCase{StatusCode::kOk,
-                     Options{}.set<storage::DownloadChecksumValidationOption>(
-                         storage::ChecksumAlgorithm::kNone),
-                     kQuickFoxCrc32cChecksumBad, kQuickFoxMD5HashBad},
+
         // In the next three cases we verify that validation works when the
         // returned values are not correct.
         HashTestCase{StatusCode::kInvalidArgument,
@@ -197,11 +173,7 @@ INSTANTIATE_TEST_SUITE_P(
                      Options{}.set<storage::DownloadChecksumValidationOption>(
                          storage::ChecksumAlgorithm::kCrc32c),
                      kQuickFoxCrc32cChecksumBad, kQuickFoxMD5HashBad},
-        HashTestCase{StatusCode::kInvalidArgument,
-                     Options{}
-                         .set<storage::EnableCrc32cValidationOption>(true)
-                         .set<storage::EnableMD5ValidationOption>(true),
-                     kQuickFoxCrc32cChecksumBad, kQuickFoxMD5HashBad},
+
         HashTestCase{StatusCode::kInvalidArgument,
                      Options{}.set<storage::DownloadChecksumValidationOption>(
                          storage::ChecksumAlgorithm::kCrc32c),
@@ -230,15 +202,7 @@ INSTANTIATE_TEST_SUITE_P(
                 .set<storage::UseCrc32cValueOption>(kQuickFoxCrc32cChecksumBad)
                 .set<storage::UseMD5ValueOption>(BinaryMD5(kQuickFoxMD5Hash)),
             kQuickFoxCrc32cChecksum, kQuickFoxMD5Hash},
-        HashTestCase{
-            StatusCode::kInvalidArgument,
-            Options{}
-                .set<storage::EnableCrc32cValidationOption>(true)
-                .set<storage::EnableMD5ValidationOption>(true)
-                .set<storage::UseCrc32cValueOption>(kQuickFoxCrc32cChecksum)
-                .set<storage::UseMD5ValueOption>(
-                    BinaryMD5(kQuickFoxMD5HashBad)),
-            kQuickFoxCrc32cChecksum, kQuickFoxMD5Hash},
+
         HashTestCase{
             StatusCode::kInvalidArgument,
             Options{}

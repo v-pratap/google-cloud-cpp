@@ -13,17 +13,6 @@
 // limitations under the License.
 
 #include "google/cloud/storage/internal/async/default_options.h"
-
-// TODO: Remove this when EnableMD5ValidationOption and
-// EnableCrc32cValidationOption are removed.
-#if defined(__GNUC__) && !defined(__clang__)
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
-#elif defined(__clang__)
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
-#endif
-
 #include "google/cloud/storage/async/idempotency_policy.h"
 #include "google/cloud/storage/async/options.h"
 #include "google/cloud/storage/async/resume_policy.h"
@@ -79,8 +68,6 @@ TEST(DefaultOptionsAsync, IdempotencyPolicy) {
 
 TEST(DefaultOptionsAsync, Hashes) {
   auto const options = DefaultOptionsAsync({});
-  EXPECT_TRUE(options.get<storage::EnableCrc32cValidationOption>());
-  EXPECT_FALSE(options.get<storage::EnableMD5ValidationOption>());
   EXPECT_FALSE(options.has<storage::UseCrc32cValueOption>());
   EXPECT_FALSE(options.has<storage::UseMD5ValueOption>());
 }

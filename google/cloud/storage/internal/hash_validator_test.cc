@@ -199,22 +199,23 @@ TEST(HashValidatorImplTest, CreateHashFunctionRead) {
   struct Test {
     std::string crc32c_expected;
     std::string md5_expected;
-    DisableCrc32cChecksum crc32_disabled;
-    DisableMD5Hash md5_disabled;
+    Options request_options;
   } cases[]{
-      {"", "", DisableCrc32cChecksum(true), DisableMD5Hash(true)},
-      {"", kQuickFoxMD5Hash, DisableCrc32cChecksum(true),
-       DisableMD5Hash(false)},
-      {kQuickFoxCrc32cChecksum, "", DisableCrc32cChecksum(false),
-       DisableMD5Hash(true)},
-      {kQuickFoxCrc32cChecksum, kQuickFoxMD5Hash, DisableCrc32cChecksum(false),
-       DisableMD5Hash(false)},
+      {"", "",
+       Options{}.set<DownloadChecksumValidationOption>(
+           ChecksumAlgorithm::kNone)},
+      {"", kQuickFoxMD5Hash,
+       Options{}.set<DownloadChecksumValidationOption>(
+           ChecksumAlgorithm::kMD5)},
+      {kQuickFoxCrc32cChecksum, "",
+       Options{}.set<DownloadChecksumValidationOption>(
+           ChecksumAlgorithm::kCrc32c)},
+      {kQuickFoxCrc32cChecksum, kQuickFoxMD5Hash, Options{}},
   };
 
   for (auto const& test : cases) {
-    auto request =
-        ReadObjectRangeRequest("test-bucket", "test-object")
-            .set_multiple_options(test.crc32_disabled, test.md5_disabled);
+    google::cloud::internal::OptionsSpan span(test.request_options);
+    auto request = ReadObjectRangeRequest("test-bucket", "test-object");
     auto validator = CreateHashValidator(request);
     auto actual =
         std::move(*validator).Finish(HashQuick(CreateHashFunction(request)));
@@ -227,10 +228,9 @@ TEST(HashValidatorImplTest, CreateHashFunctionUpload) {
   auto const upload_cases = testing::UploadHashCases();
 
   for (auto const& test : upload_cases) {
-    auto request =
-        ResumableUploadRequest("test-bucket", "test-object")
-            .set_multiple_options(test.crc32_disabled, test.crc32_value,
-                                  test.md5_disabled, test.md5_value);
+    google::cloud::internal::OptionsSpan span(test.request_options);
+    auto request = ResumableUploadRequest("test-bucket", "test-object")
+                       .set_multiple_options(test.crc32_value, test.md5_value);
     auto validator = CreateHashValidator(request);
     auto actual =
         std::move(*validator).Finish(HashQuick(CreateHashFunction(request)));

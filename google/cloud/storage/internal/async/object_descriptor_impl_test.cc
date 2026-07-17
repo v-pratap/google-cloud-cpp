@@ -13,17 +13,6 @@
 // limitations under the License.
 
 #include "google/cloud/storage/internal/async/object_descriptor_impl.h"
-
-// TODO: Remove this when EnableMD5ValidationOption and
-// EnableCrc32cValidationOption are removed.
-#if defined(__GNUC__) && !defined(__clang__)
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
-#elif defined(__clang__)
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
-#endif
-
 #include "google/cloud/mocks/mock_async_streaming_read_write_rpc.h"
 #include "google/cloud/storage/async/options.h"
 #include "google/cloud/storage/async/resume_policy.h"
@@ -86,6 +75,8 @@ auto MakeTested(
     std::function<bool()> transport_ok = [] { return true; }) {
   Options options;
   options.set<storage::EnableMultiStreamOptimizationOption>(true);
+  options.set<storage::DownloadChecksumValidationOption>(
+      storage::ChecksumAlgorithm::kNone);
   return std::make_shared<ObjectDescriptorImpl>(
       std::move(resume_policy), std::move(make_stream),
       std::move(read_object_spec), std::move(stream), std::move(options),
@@ -1941,8 +1932,6 @@ TEST(ObjectDescriptorImpl, FullReadChecksumValidationSuccess) {
   });
 
   Options options;
-  options.set<storage::EnableCrc32cValidationOption>(true);
-  options.set<storage::EnableMD5ValidationOption>(true);
 
   auto tested = std::make_shared<ObjectDescriptorImpl>(
       NoResume(), factory.AsStdFunction(),
@@ -2048,8 +2037,6 @@ TEST(ObjectDescriptorImpl, FullReadChecksumValidationMismatchCrc32c) {
   });
 
   Options options;
-  options.set<storage::EnableCrc32cValidationOption>(true);
-  options.set<storage::EnableMD5ValidationOption>(true);
 
   auto tested = std::make_shared<ObjectDescriptorImpl>(
       NoResume(), factory.AsStdFunction(),
@@ -2156,8 +2143,6 @@ TEST(ObjectDescriptorImpl, FullReadChecksumValidationMismatchMd5) {
   });
 
   Options options;
-  options.set<storage::EnableCrc32cValidationOption>(true);
-  options.set<storage::EnableMD5ValidationOption>(true);
 
   auto tested = std::make_shared<ObjectDescriptorImpl>(
       NoResume(), factory.AsStdFunction(),
@@ -2264,8 +2249,6 @@ TEST(ObjectDescriptorImpl, PartialReadChecksumValidationBypassed) {
   });
 
   Options options;
-  options.set<storage::EnableCrc32cValidationOption>(true);
-  options.set<storage::EnableMD5ValidationOption>(true);
 
   auto tested = std::make_shared<ObjectDescriptorImpl>(
       NoResume(), factory.AsStdFunction(),

@@ -15,7 +15,6 @@
 #ifndef GOOGLE_CLOUD_CPP_GOOGLE_CLOUD_STORAGE_INTERNAL_ASYNC_CHECKSUM_HELPERS_H
 #define GOOGLE_CLOUD_CPP_GOOGLE_CLOUD_STORAGE_INTERNAL_ASYNC_CHECKSUM_HELPERS_H
 
-#include "google/cloud/internal/disable_deprecation_warnings.inc"
 #include "google/cloud/storage/async/options.h"
 #include "google/cloud/storage/options.h"
 #include "google/cloud/options.h"
@@ -31,23 +30,21 @@ struct ChecksumSettings {
 };
 
 inline ChecksumSettings GetDownloadChecksumSettings(Options const& options) {
-  if (options.has<storage::DownloadChecksumValidationOption>()) {
-    auto const algo = options.get<storage::DownloadChecksumValidationOption>();
-    return {algo == storage::ChecksumAlgorithm::kCrc32c,
-            algo == storage::ChecksumAlgorithm::kMD5};
+  if (!options.has<storage::DownloadChecksumValidationOption>()) {
+    return {true, true};
   }
-  return {options.get<storage::EnableCrc32cValidationOption>(),
-          options.get<storage::EnableMD5ValidationOption>()};
+  auto const algo = options.get<storage::DownloadChecksumValidationOption>();
+  return {algo == storage::ChecksumAlgorithm::kCrc32c,
+          algo == storage::ChecksumAlgorithm::kMD5};
 }
 
 inline ChecksumSettings GetUploadChecksumSettings(Options const& options) {
-  if (options.has<storage::UploadChecksumValidationOption>()) {
-    auto const algo = options.get<storage::UploadChecksumValidationOption>();
-    return {algo == storage::ChecksumAlgorithm::kCrc32c,
-            algo == storage::ChecksumAlgorithm::kMD5};
+  if (!options.has<storage::UploadChecksumValidationOption>()) {
+    return {true, true};
   }
-  return {options.get<storage::EnableCrc32cValidationOption>(),
-          options.get<storage::EnableMD5ValidationOption>()};
+  auto const algo = options.get<storage::UploadChecksumValidationOption>();
+  return {algo == storage::ChecksumAlgorithm::kCrc32c,
+          algo == storage::ChecksumAlgorithm::kMD5};
 }
 
 GOOGLE_CLOUD_CPP_INLINE_NAMESPACE_END
@@ -55,5 +52,4 @@ GOOGLE_CLOUD_CPP_INLINE_NAMESPACE_END
 }  // namespace cloud
 }  // namespace google
 
-#include "google/cloud/internal/diagnostics_pop.inc"
 #endif  // GOOGLE_CLOUD_CPP_GOOGLE_CLOUD_STORAGE_INTERNAL_ASYNC_CHECKSUM_HELPERS_H

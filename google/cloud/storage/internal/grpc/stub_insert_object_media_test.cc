@@ -82,8 +82,12 @@ TEST(GrpcClientInsertObjectMediaTest, Small) {
   });
 
   std::shared_ptr<google::cloud::internal::MinimalIamCredentialsStub> unused;
-  auto client = std::make_unique<GrpcStub>(mock, unused, Options{});
+  auto client = std::make_unique<GrpcStub>(
+      mock, unused,
+      Options{}.set<storage::UploadChecksumValidationOption>(
+          storage::ChecksumAlgorithm::kCrc32c));
   auto context = rest_internal::RestContext{};
+  google::cloud::internal::OptionsSpan const span(client->options());
   auto metadata = client->InsertObjectMedia(
       context, client->options(),
       InsertObjectMediaRequest("test-bucket", "test-object",
@@ -121,6 +125,7 @@ TEST(GrpcClientInsertObjectMediaTest, StallTimeoutWrite) {
                                      .set<TransferStallTimeoutOption>(expected)
                                      .set<GrpcCompletionQueueOption>(cq));
   auto context = rest_internal::RestContext{};
+  google::cloud::internal::OptionsSpan const span(client->options());
   auto metadata = client->InsertObjectMedia(
       context, client->options(),
       InsertObjectMediaRequest("test-bucket", "test-object",
@@ -159,6 +164,7 @@ TEST(GrpcClientInsertObjectMediaTest, StallTimeoutClose) {
                                      .set<TransferStallTimeoutOption>(expected)
                                      .set<GrpcCompletionQueueOption>(cq));
   auto context = rest_internal::RestContext{};
+  google::cloud::internal::OptionsSpan const span(client->options());
   auto metadata = client->InsertObjectMedia(
       context, client->options(),
       InsertObjectMediaRequest("test-bucket", "test-object",

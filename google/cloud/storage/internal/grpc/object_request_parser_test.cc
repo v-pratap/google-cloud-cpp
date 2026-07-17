@@ -1,3 +1,4 @@
+#include "google/cloud/storage/options.h"
 // Copyright 2020 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -742,7 +743,7 @@ TEST(GrpcObjectRequestParser, MaybeFinalizeInsertObjectMediaRequest) {
   using storage::internal::InsertObjectMediaRequest;
   // See top-of-file comments for details on the magic numbers
   struct Test {
-    std::function<void(InsertObjectMediaRequest&)> apply_options;
+    std::function<void(InsertObjectMediaRequest&, google::cloud::Options&)> apply_options;
     std::string expected_checksums;
   } cases[] = {
       // These tests provide the "wrong" hashes. This is what would happen if
@@ -750,25 +751,25 @@ TEST(GrpcObjectRequestParser, MaybeFinalizeInsertObjectMediaRequest) {
       // from GCS, and then uploaded to another GCS destination *but* the data
       // was somehow corrupted locally (say a bad disk). In that case, we don't
       // want to recompute the hashes in the upload.
-      {
-          [](storage::internal::InsertObjectMediaRequest& r) {
+      { // Test 1: DisableCrc32cChecksum(true), MD5 precomputed
+          [](InsertObjectMediaRequest& r, google::cloud::Options& o) {
             r.set_option(storage::MD5HashValue(storage::ComputeMD5Hash(kText)));
-            r.set_option(storage::DisableCrc32cChecksum(true));
+            o.set<storage::UploadChecksumValidationOption>(
+                storage::ChecksumAlgorithm::kMD5);
           },
           R"pb(
             md5_hash: "\x9e\x10\x7d\x9d\x37\x2b\xb6\x82\x6b\xd8\x1d\x35\x42\xa4\x19\xd6")pb",
       },
-      {
-          [](InsertObjectMediaRequest& r) {
+      { // Test 2: DisableCrc32cChecksum(false), MD5 precomputed
+          [](InsertObjectMediaRequest& r, google::cloud::Options& o) {
             r.set_option(storage::MD5HashValue(storage::ComputeMD5Hash(kText)));
-            r.set_option(storage::DisableCrc32cChecksum(false));
           },
           R"pb(
             md5_hash: "\x9e\x10\x7d\x9d\x37\x2b\xb6\x82\x6b\xd8\x1d\x35\x42\xa4\x19\xd6"
             crc32c: 0x4ad67f80)pb",
       },
-      {
-          [](InsertObjectMediaRequest& r) {
+      { // Test 3: Both precomputed
+          [](InsertObjectMediaRequest& r, google::cloud::Options& o) {
             r.set_option(storage::MD5HashValue(storage::ComputeMD5Hash(kText)));
             r.set_option(storage::Crc32cChecksumValue(
                 storage::ComputeCrc32cChecksum(kText)));
@@ -778,26 +779,23 @@ TEST(GrpcObjectRequestParser, MaybeFinalizeInsertObjectMediaRequest) {
             crc32c: 0x22620404)pb",
       },
 
-      {
-          [](InsertObjectMediaRequest& r) {
-            r.set_option(storage::DisableMD5Hash(false));
-            r.set_option(storage::DisableCrc32cChecksum(true));
+      { // Test 4: DisableMD5Hash(false), DisableCrc32cChecksum(true)
+          [](InsertObjectMediaRequest& r, google::cloud::Options& o) {
+            o.set<storage::UploadChecksumValidationOption>(
+                storage::ChecksumAlgorithm::kMD5);
           },
           R"pb(
             md5_hash: "\x4a\xd1\x2f\xa3\x65\x7f\xaa\x80\xc2\xb9\xa9\x2d\x65\x2c\x37\x21")pb",
       },
-      {
-          [](InsertObjectMediaRequest& r) {
-            r.set_option(storage::DisableMD5Hash(false));
-            r.set_option(storage::DisableCrc32cChecksum(false));
+      { // Test 5: DisableMD5Hash(false), DisableCrc32cChecksum(false)
+          [](InsertObjectMediaRequest& r, google::cloud::Options& o) {
           },
           R"pb(
             md5_hash: "\x4a\xd1\x2f\xa3\x65\x7f\xaa\x80\xc2\xb9\xa9\x2d\x65\x2c\x37\x21"
             crc32c: 0x4ad67f80)pb",
       },
-      {
-          [](InsertObjectMediaRequest& r) {
-            r.set_option(storage::DisableMD5Hash(false));
+      { // Test 6: DisableMD5Hash(false), CRC32C precomputed
+          [](InsertObjectMediaRequest& r, google::cloud::Options& o) {
             r.set_option(storage::Crc32cChecksumValue(
                 storage::ComputeCrc32cChecksum(kText)));
           },
@@ -806,25 +804,26 @@ TEST(GrpcObjectRequestParser, MaybeFinalizeInsertObjectMediaRequest) {
             crc32c: 0x22620404)pb",
       },
 
-      {
-          [](InsertObjectMediaRequest& r) {
-            r.set_option(storage::DisableMD5Hash(true));
-            r.set_option(storage::DisableCrc32cChecksum(true));
+      { // Test 7: DisableMD5Hash(true), DisableCrc32cChecksum(true)
+          [](InsertObjectMediaRequest& r, google::cloud::Options& o) {
+            o.set<storage::UploadChecksumValidationOption>(
+                storage::ChecksumAlgorithm::kNone);
           },
           R"pb(
           )pb",
       },
-      {
-          [](InsertObjectMediaRequest& r) {
-            r.set_option(storage::DisableMD5Hash(true));
-            r.set_option(storage::DisableCrc32cChecksum(false));
+      { // Test 8: DisableMD5Hash(true), DisableCrc32cChecksum(false)
+          [](InsertObjectMediaRequest& r, google::cloud::Options& o) {
+            o.set<storage::UploadChecksumValidationOption>(
+                storage::ChecksumAlgorithm::kCrc32c);
           },
           R"pb(
             crc32c: 0x4ad67f80)pb",
       },
-      {
-          [](InsertObjectMediaRequest& r) {
-            r.set_option(storage::DisableMD5Hash(true));
+      { // Test 9: DisableMD5Hash(true), CRC32C precomputed
+          [](InsertObjectMediaRequest& r, google::cloud::Options& o) {
+            o.set<storage::UploadChecksumValidationOption>(
+                storage::ChecksumAlgorithm::kCrc32c);
             r.set_option(storage::Crc32cChecksumValue(
                 storage::ComputeCrc32cChecksum(kText)));
           },
@@ -840,7 +839,9 @@ TEST(GrpcObjectRequestParser, MaybeFinalizeInsertObjectMediaRequest) {
 
     storage::internal::InsertObjectMediaRequest request(
         "test-bucket-name", "test-object-name", kAlt);
-    test.apply_options(request);
+    google::cloud::Options options;
+    test.apply_options(request, options);
+    google::cloud::internal::OptionsSpan span(options);
     request.set_multiple_options();
     request.hash_function().Update(0, kAlt);
     storage_proto::WriteObjectRequest write_request;

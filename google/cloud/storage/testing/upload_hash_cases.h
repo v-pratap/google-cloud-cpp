@@ -27,9 +27,8 @@ namespace testing {
 struct UploadHashCase {
   std::string crc32c_expected;
   std::string md5_expected;
-  DisableCrc32cChecksum crc32_disabled;
+  Options request_options;
   Crc32cChecksumValue crc32_value;
-  DisableMD5Hash md5_disabled;
   MD5HashValue md5_value;
 };
 

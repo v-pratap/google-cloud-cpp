@@ -448,10 +448,9 @@ StatusOr<ObjectMetadata> RestStub::InsertObjectMedia(
   }
 
   // If the application has set an explicit hash value we need to use multipart
-  // uploads. `DisableMD5Hash` and `DisableCrc32cChecksum` should not be
-  // dependent on each other.
-  if (!request.GetOption<DisableMD5Hash>().value_or(false) ||
-      !request.GetOption<DisableCrc32cChecksum>().value_or(false) ||
+  // uploads.
+  if (options.get<UploadChecksumValidationOption>() !=
+          ChecksumAlgorithm::kNone ||
       request.HasOption<MD5HashValue>() ||
       request.HasOption<Crc32cChecksumValue>()) {
     return InsertObjectMediaMultipart(context, options, request);

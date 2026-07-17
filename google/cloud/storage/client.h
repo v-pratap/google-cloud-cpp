@@ -946,8 +946,8 @@ class Client {
    * @param contents the contents (media) for the new object.
    * @param options a list of optional query parameters and/or request headers.
    *     Valid types for this operation include `ContentEncoding`,
-   *     `ContentType`, `Crc32cChecksumValue`, `DisableCrc32cChecksum`,
-   *     `DisableMD5Hash`, `EncryptionKey`, `IfGenerationMatch`,
+   *     `ContentType`, `Crc32cChecksumValue`, `UploadChecksumValidationOption`,
+   * `DownloadChecksumValidationOption`, `EncryptionKey`, `IfGenerationMatch`,
    *     `IfGenerationNotMatch`, `IfMetagenerationMatch`,
    *     `IfMetagenerationNotMatch`, `KmsKeyName`, `MD5HashValue`,
    *     `PredefinedAcl`, `Projection`, `UserProject`, and `WithObjectMetadata`.
@@ -1176,11 +1176,11 @@ class Client {
    * @param bucket_name the name of the bucket that contains the object.
    * @param object_name the name of the object to be read.
    * @param options a list of optional query parameters and/or request headers.
-   *     Valid types for this operation include `DisableCrc32cChecksum`,
-   *     `DisableMD5Hash`, `EncryptionKey`, `Generation`, `IfGenerationMatch`,
-   *     `IfGenerationNotMatch`, `IfMetagenerationMatch`,
-   *     `IfMetagenerationNotMatch`, `ReadFromOffset`, `ReadRange`, `ReadLast`,
-   *     `UserProject`, and `AcceptEncoding`.
+   *     Valid types for this operation include
+   * `UploadChecksumValidationOption`, `DownloadChecksumValidationOption`,
+   * `EncryptionKey`, `Generation`, `IfGenerationMatch`, `IfGenerationNotMatch`,
+   * `IfMetagenerationMatch`, `IfMetagenerationNotMatch`, `ReadFromOffset`,
+   * `ReadRange`, `ReadLast`, `UserProject`, and `AcceptEncoding`.
    *
    * @par Idempotency
    * This is a read-only operation and is always idempotent.
@@ -1240,12 +1240,13 @@ class Client {
    * @param object_name the name of the object to be read.
    * @param options a list of optional query parameters and/or request headers.
    *   Valid types for this operation include `ContentEncoding`, `ContentType`,
-   *   `Crc32cChecksumValue`, `DisableCrc32cChecksum`, `DisableMD5Hash`,
-   *   `EncryptionKey`, `IfGenerationMatch`, `IfGenerationNotMatch`,
-   *   `IfMetagenerationMatch`, `IfMetagenerationNotMatch`, `KmsKeyName`,
-   *   `MD5HashValue`, `PredefinedAcl`, `Projection`,
-   *   `UseResumableUploadSession`, `UserProject`, `WithObjectMetadata`,
-   *   `UploadContentLength`, `AutoFinalize`, and `UploadBufferSize`.
+   *   `Crc32cChecksumValue`, `UploadChecksumValidationOption`,
+   * `DownloadChecksumValidationOption`, `EncryptionKey`, `IfGenerationMatch`,
+   * `IfGenerationNotMatch`, `IfMetagenerationMatch`,
+   * `IfMetagenerationNotMatch`, `KmsKeyName`, `MD5HashValue`, `PredefinedAcl`,
+   * `Projection`, `UseResumableUploadSession`, `UserProject`,
+   * `WithObjectMetadata`, `UploadContentLength`, `AutoFinalize`, and
+   * `UploadBufferSize`.
    *
    * @par Idempotency
    * This operation is only idempotent if restricted by pre-conditions, in this
@@ -1295,11 +1296,12 @@ class Client {
    * @param object_name the name of the object to be read.
    * @param options a list of optional query parameters and/or request headers.
    *   Valid types for this operation include `ContentEncoding`, `ContentType`,
-   *   `Crc32cChecksumValue`, `DisableCrc32cChecksum`, `DisableMD5Hash`,
-   *   `EncryptionKey`, `IfGenerationMatch`, `IfGenerationNotMatch`,
-   *   `IfMetagenerationMatch`, `IfMetagenerationNotMatch`, `KmsKeyName`,
-   *   `MD5HashValue`, `PredefinedAcl`, `Projection`, `UserProject`,
-   *   `UploadFromOffset`, `UploadLimit` and `WithObjectMetadata`.
+   *   `Crc32cChecksumValue`, `UploadChecksumValidationOption`,
+   * `DownloadChecksumValidationOption`, `EncryptionKey`, `IfGenerationMatch`,
+   * `IfGenerationNotMatch`, `IfMetagenerationMatch`,
+   * `IfMetagenerationNotMatch`, `KmsKeyName`, `MD5HashValue`, `PredefinedAcl`,
+   * `Projection`, `UserProject`, `UploadFromOffset`, `UploadLimit` and
+   * `WithObjectMetadata`.
    *
    * @par Idempotency
    * This operation is only idempotent if restricted by pre-conditions, in this

@@ -12,11 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "google/cloud/internal/disable_deprecation_warnings.inc"
 #include "google/cloud/storage/internal/hash_function.h"
 #include "google/cloud/storage/internal/hash_function_impl.h"
-#include "google/cloud/options.h"
-#include "google/cloud/storage/options.h"
+#include "google/cloud/storage/internal/checksum_helpers.h"
 #include "google/cloud/storage/internal/object_requests.h"
+#include "google/cloud/storage/options.h"
+#include "google/cloud/options.h"
 #include <memory>
 #include <utility>
 
@@ -28,14 +30,17 @@ namespace internal {
 
 std::unique_ptr<HashFunction> CreateHashFunction(
     Crc32cChecksumValue const& crc32c_value,
-    DisableCrc32cChecksum const& crc32c_disabled, MD5HashValue const& md5_value,
-    DisableMD5Hash const& md5_disabled) {
+    MD5HashValue const& md5_value) {
+  struct DummyRequest {}; // GetUploadChecksumSettings takes a Request type for legacy reasons
+  auto const settings = GetUploadChecksumSettings(
+      DummyRequest{}, google::cloud::internal::CurrentOptions());
+  
   auto crc32c = std::unique_ptr<HashFunction>();
   auto crc32c_v = crc32c_value.value_or("");
   if (!crc32c_v.empty()) {
     crc32c = std::make_unique<PrecomputedHashFunction>(
         HashValues{/*.crc32c=*/std::move(crc32c_v), /*md5=*/{}});
-  } else if (!crc32c_disabled.value_or(false)) {
+  } else if (!settings.crc32c) {
     crc32c = std::make_unique<Crc32cHashFunction>();
   }
 
@@ -44,7 +49,7 @@ std::unique_ptr<HashFunction> CreateHashFunction(
   if (!md5_v.empty()) {
     md5 = std::make_unique<PrecomputedHashFunction>(
         HashValues{/*.crc32c=*/{}, /*.md5=*/std::move(md5_v)});
-  } else if (!md5_disabled.value_or(false)) {
+  } else if (!settings.md5) {
     md5 = MD5HashFunction::Create();
   }
 
@@ -63,17 +68,10 @@ std::unique_ptr<HashFunction> CreateHashFunction(
     ReadObjectRangeRequest const& request) {
   if (request.RequiresRangeHeader()) return CreateNullHashFunction();
 
-  bool disable_md5 = false;
-  bool disable_crc32c = false;
-  auto const& options = google::cloud::internal::CurrentOptions();
-  if (options.has<DownloadChecksumValidationOption>()) {
-    auto const algo = options.get<DownloadChecksumValidationOption>();
-    disable_md5 = (algo != ChecksumAlgorithm::kMD5);
-    disable_crc32c = (algo != ChecksumAlgorithm::kCrc32c);
-  } else {
-    disable_md5 = request.GetOption<DisableMD5Hash>().value_or(false);
-    disable_crc32c = request.GetOption<DisableCrc32cChecksum>().value_or(false);
-  }
+  auto const settings = GetDownloadChecksumSettings(
+      request, google::cloud::internal::CurrentOptions());
+  auto const disable_md5 = settings.md5;
+  auto const disable_crc32c = settings.crc32c;
   if (disable_md5 && disable_crc32c) {
     return std::make_unique<NullHashFunction>();
   }
@@ -90,21 +88,9 @@ std::unique_ptr<HashFunction> CreateHashFunction(
     // for previous values is lost.
     return CreateNullHashFunction();
   }
-  
-  DisableCrc32cChecksum disable_crc32c;
-  DisableMD5Hash disable_md5;
-  auto const& options = google::cloud::internal::CurrentOptions();
-  if (options.has<UploadChecksumValidationOption>()) {
-    auto const algo = options.get<UploadChecksumValidationOption>();
-    disable_md5 = DisableMD5Hash(algo != ChecksumAlgorithm::kMD5);
-    disable_crc32c = DisableCrc32cChecksum(algo != ChecksumAlgorithm::kCrc32c);
-  } else {
-    disable_md5 = request.GetOption<DisableMD5Hash>();
-    disable_crc32c = request.GetOption<DisableCrc32cChecksum>();
-  }
+
   return CreateHashFunction(request.GetOption<Crc32cChecksumValue>(),
-                            disable_crc32c, request.GetOption<MD5HashValue>(),
-                            disable_md5);
+                            request.GetOption<MD5HashValue>());
 }
 
 }  // namespace internal
@@ -112,3 +98,5 @@ GOOGLE_CLOUD_CPP_INLINE_NAMESPACE_END
 }  // namespace storage
 }  // namespace cloud
 }  // namespace google
+
+#include "google/cloud/internal/diagnostics_pop.inc"

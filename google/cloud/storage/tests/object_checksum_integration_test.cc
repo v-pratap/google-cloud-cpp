@@ -52,8 +52,10 @@ class ObjectChecksumIntegrationTest
 TEST_F(ObjectChecksumIntegrationTest, InsertObjectDefault) {
   auto client = MakeIntegrationTestClient();
   auto object_name = MakeRandomObjectName();
-  auto meta = client.InsertObject(bucket_name_, object_name, LoremIpsum(),
-                                  DisableMD5Hash(true), IfGenerationMatch(0));
+  auto meta = client.InsertObject(
+      bucket_name_, object_name, LoremIpsum(),
+      Options{}.set<UploadChecksumValidationOption>(ChecksumAlgorithm::kCrc32c),
+      IfGenerationMatch(0));
   ASSERT_STATUS_OK(meta);
   ScheduleForDelete(*meta);
 
@@ -63,13 +65,16 @@ TEST_F(ObjectChecksumIntegrationTest, InsertObjectDefault) {
   }
 }
 
-/// @test Verify that `DisableCrc32cChecksum(true)` works as expected.
+/// @test Verify that
+/// `Options{}.set<UploadChecksumValidationOption>(ChecksumAlgorithm::kNone)`
+/// works as expected.
 TEST_F(ObjectChecksumIntegrationTest, InsertObjectExplicitDisable) {
   auto client = MakeIntegrationTestClient();
   auto object_name = MakeRandomObjectName();
-  auto meta = client.InsertObject(bucket_name_, object_name, LoremIpsum(),
-                                  DisableCrc32cChecksum(true),
-                                  DisableMD5Hash(true), IfGenerationMatch(0));
+  auto meta = client.InsertObject(
+      bucket_name_, object_name, LoremIpsum(),
+      Options{}.set<UploadChecksumValidationOption>(ChecksumAlgorithm::kNone),
+      IfGenerationMatch(0));
   ASSERT_STATUS_OK(meta);
   ScheduleForDelete(*meta);
 
@@ -79,14 +84,15 @@ TEST_F(ObjectChecksumIntegrationTest, InsertObjectExplicitDisable) {
   }
 }
 
-/// @test Verify that `DisableCrc32cChecksum(false)` works as expected.
+/// @test Verify that `UploadChecksumValidationOption` works as expected.
 TEST_F(ObjectChecksumIntegrationTest, InsertObjectExplicitEnable) {
   auto client = MakeIntegrationTestClient();
   auto object_name = MakeRandomObjectName();
 
-  auto meta = client.InsertObject(bucket_name_, object_name, LoremIpsum(),
-                                  DisableCrc32cChecksum(false),
-                                  DisableMD5Hash(true), IfGenerationMatch(0));
+  auto meta = client.InsertObject(
+      bucket_name_, object_name, LoremIpsum(),
+      Options{}.set<UploadChecksumValidationOption>(ChecksumAlgorithm::kCrc32c),
+      IfGenerationMatch(0));
   ASSERT_STATUS_OK(meta);
   ScheduleForDelete(*meta);
 
@@ -103,7 +109,8 @@ TEST_F(ObjectChecksumIntegrationTest, InsertObjectWithValueSuccess) {
   auto meta = client.InsertObject(
       bucket_name_, object_name, LoremIpsum(),
       Crc32cChecksumValue(ComputeCrc32cChecksum(LoremIpsum())),
-      DisableMD5Hash(true), IfGenerationMatch(0));
+      Options{}.set<UploadChecksumValidationOption>(ChecksumAlgorithm::kCrc32c),
+      IfGenerationMatch(0));
   ASSERT_STATUS_OK(meta);
   ScheduleForDelete(*meta);
 
@@ -121,7 +128,8 @@ TEST_F(ObjectChecksumIntegrationTest, InsertObjectWithValueFailure) {
   auto object_name = MakeRandomObjectName();
 
   auto failure = client.InsertObject(
-      bucket_name_, object_name, LoremIpsum(), DisableMD5Hash(true),
+      bucket_name_, object_name, LoremIpsum(),
+      Options{}.set<UploadChecksumValidationOption>(ChecksumAlgorithm::kCrc32c),
       IfGenerationMatch(0), Crc32cChecksumValue(ComputeCrc32cChecksum("")));
   EXPECT_THAT(failure, Not(IsOk()));
 }
@@ -131,8 +139,10 @@ TEST_F(ObjectChecksumIntegrationTest, WriteObjectDefault) {
   auto client = MakeIntegrationTestClient();
   auto object_name = MakeRandomObjectName();
 
-  auto os = client.WriteObject(bucket_name_, object_name, DisableMD5Hash(true),
-                               IfGenerationMatch(0));
+  auto os = client.WriteObject(
+      bucket_name_, object_name,
+      Options{}.set<UploadChecksumValidationOption>(ChecksumAlgorithm::kCrc32c),
+      IfGenerationMatch(0));
   os << LoremIpsum();
   os.Close();
   auto meta = os.metadata();
@@ -156,9 +166,10 @@ TEST_F(ObjectChecksumIntegrationTest, WriteObjectExplicitDisable) {
   auto client = MakeIntegrationTestClient();
   auto object_name = MakeRandomObjectName();
 
-  auto os =
-      client.WriteObject(bucket_name_, object_name, DisableCrc32cChecksum(true),
-                         DisableMD5Hash(true), IfGenerationMatch(0));
+  auto os = client.WriteObject(
+      bucket_name_, object_name,
+      Options{}.set<UploadChecksumValidationOption>(ChecksumAlgorithm::kNone),
+      IfGenerationMatch(0));
   os << LoremIpsum();
   os.Close();
   auto meta = os.metadata();
@@ -180,9 +191,10 @@ TEST_F(ObjectChecksumIntegrationTest, WriteObjectExplicitDisable) {
 TEST_F(ObjectChecksumIntegrationTest, WriteObjectExplicitEnable) {
   auto client = MakeIntegrationTestClient();
   auto object_name = MakeRandomObjectName();
-  auto os = client.WriteObject(bucket_name_, object_name,
-                               DisableCrc32cChecksum(false),
-                               DisableMD5Hash(true), IfGenerationMatch(0));
+  auto os = client.WriteObject(
+      bucket_name_, object_name,
+      Options{}.set<UploadChecksumValidationOption>(ChecksumAlgorithm::kCrc32c),
+      IfGenerationMatch(0));
   os << LoremIpsum();
   os.Close();
   auto meta = os.metadata();
@@ -207,7 +219,8 @@ TEST_F(ObjectChecksumIntegrationTest, WriteObjectWithValueSuccess) {
   auto os = client.WriteObject(
       bucket_name_, object_name,
       Crc32cChecksumValue(ComputeCrc32cChecksum(LoremIpsum())),
-      DisableMD5Hash(true), IfGenerationMatch(0));
+      Options{}.set<UploadChecksumValidationOption>(ChecksumAlgorithm::kCrc32c),
+      IfGenerationMatch(0));
   os << LoremIpsum();
   os.Close();
   auto meta = os.metadata();
@@ -230,7 +243,8 @@ TEST_F(ObjectChecksumIntegrationTest, WriteObjectWithValueFailure) {
 
   auto os = client.WriteObject(
       bucket_name_, object_name, MD5HashValue(ComputeMD5Hash("")),
-      DisableCrc32cChecksum(true), IfGenerationMatch(0));
+      Options{}.set<UploadChecksumValidationOption>(ChecksumAlgorithm::kNone),
+      IfGenerationMatch(0));
   os << LoremIpsum();
   os.Close();
   auto meta = os.metadata();
@@ -249,7 +263,8 @@ TEST_F(ObjectChecksumIntegrationTest, WriteObjectReceiveBadChecksum) {
 
   // Create a stream to upload an object.
   ObjectWriteStream stream = client.WriteObject(
-      bucket_name_, object_name, DisableMD5Hash(true),
+      bucket_name_, object_name,
+      Options{}.set<UploadChecksumValidationOption>(ChecksumAlgorithm::kCrc32c),
       CustomHeader("x-goog-emulator-instructions", "inject-upload-data-error"),
       IfGenerationMatch(0));
   stream << LoremIpsum() << "\n";
@@ -270,7 +285,8 @@ TEST_F(ObjectChecksumIntegrationTest, WriteObjectUploadBadChecksum) {
   // Create a stream to upload an object.
   ObjectWriteStream stream = client.WriteObject(
       bucket_name_, object_name, Crc32cChecksumValue(ComputeCrc32cChecksum("")),
-      DisableMD5Hash(true), IfGenerationMatch(0));
+      Options{}.set<UploadChecksumValidationOption>(ChecksumAlgorithm::kCrc32c),
+      IfGenerationMatch(0));
   stream << LoremIpsum() << "\n";
   stream.Close();
   EXPECT_TRUE(stream.bad());
@@ -284,9 +300,10 @@ TEST_F(ObjectChecksumIntegrationTest, WriteObjectWithFullChecksumValidation) {
   auto content = LoremIpsum();
   auto expected_crc32c = ComputeCrc32cChecksum(content);
 
-  auto os = client.WriteObject(bucket_name_, object_name,
-                               DisableCrc32cChecksum(false),
-                               DisableMD5Hash(true), IfGenerationMatch(0));
+  auto os = client.WriteObject(
+      bucket_name_, object_name,
+      Options{}.set<UploadChecksumValidationOption>(ChecksumAlgorithm::kCrc32c),
+      IfGenerationMatch(0));
   os << content;
   os.Close();
   auto meta = os.metadata();
@@ -314,9 +331,10 @@ TEST_F(ObjectChecksumIntegrationTest, WriteObjectWithIncorrectChecksumValue) {
   auto bad_crc32c =
       ComputeCrc32cChecksum("this is not the data being uploaded");
 
-  auto os = client.WriteObject(bucket_name_, object_name,
-                               Crc32cChecksumValue(bad_crc32c),
-                               DisableMD5Hash(true), IfGenerationMatch(0));
+  auto os = client.WriteObject(
+      bucket_name_, object_name, Crc32cChecksumValue(bad_crc32c),
+      Options{}.set<UploadChecksumValidationOption>(ChecksumAlgorithm::kCrc32c),
+      IfGenerationMatch(0));
 
   os << content;
   os.Close();
@@ -362,7 +380,8 @@ TEST_F(ObjectChecksumIntegrationTest, ReadObjectCorruptedByServerGetc) {
   ScheduleForDelete(*meta);
 
   auto stream = client.ReadObject(
-      bucket_name_, object_name, DisableMD5Hash(true),
+      bucket_name_, object_name,
+      Options{}.set<UploadChecksumValidationOption>(ChecksumAlgorithm::kCrc32c),
       CustomHeader("x-goog-emulator-instructions", "return-corrupted-data"));
 
 #if GOOGLE_CLOUD_CPP_HAVE_EXCEPTIONS
@@ -402,7 +421,8 @@ TEST_F(ObjectChecksumIntegrationTest, ReadObjectCorruptedByServerRead) {
   ScheduleForDelete(*meta);
 
   auto stream = client.ReadObject(
-      bucket_name_, object_name, DisableMD5Hash(true),
+      bucket_name_, object_name,
+      Options{}.set<UploadChecksumValidationOption>(ChecksumAlgorithm::kCrc32c),
       CustomHeader("x-goog-emulator-instructions", "return-corrupted-data"));
 
   // Create a buffer large enough to read the full contents.
