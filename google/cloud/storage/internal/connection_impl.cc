@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "google/cloud/internal/disable_deprecation_warnings.inc"
 #include "google/cloud/storage/internal/connection_impl.h"
 #include "google/cloud/storage/internal/retry_object_read_source.h"
 #include "google/cloud/storage/parallel_upload.h"
@@ -765,9 +766,9 @@ StatusOr<std::unique_ptr<std::string>> StorageConnectionImpl::UploadFileSimple(
     return google::cloud::internal::InvalidArgumentError(std::move(os).str(),
                                                          GCP_ERROR_INFO());
   }
-  auto upload_size = (std::min)(
-      request.GetOption<UploadLimit>().value_or(file_size - upload_offset),
-      file_size - upload_offset);
+  auto upload_size = (std::min)(request.GetOption<UploadLimit>().value_or(
+                                    file_size - upload_offset),
+                                file_size - upload_offset);
 
   std::ifstream is(file_name, std::ios::binary);
   if (!is.is_open()) {
@@ -831,9 +832,9 @@ integrity checks using the DisableMD5Hash() and DisableCrc32cChecksum() options.
                                                            GCP_ERROR_INFO());
     }
 
-    auto upload_size = (std::min)(
-        request.GetOption<UploadLimit>().value_or(file_size - upload_offset),
-        file_size - upload_offset);
+    auto upload_size = (std::min)(request.GetOption<UploadLimit>().value_or(
+                                      file_size - upload_offset),
+                                  file_size - upload_offset);
     request.set_option(UploadContentLength(upload_size));
   }
   auto source = std::make_unique<std::ifstream>(file_name, std::ios::binary);
@@ -1392,3 +1393,4 @@ GOOGLE_CLOUD_CPP_INLINE_NAMESPACE_END
 }  // namespace storage
 }  // namespace cloud
 }  // namespace google
+#include "google/cloud/internal/diagnostics_pop.inc"

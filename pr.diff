@@ -1,0 +1,274 @@
+diff --git a/google/cloud/storage/google_cloud_cpp_storage.bzl b/google/cloud/storage/google_cloud_cpp_storage.bzl
+index ed40ddb04ab5f..6d4f28b50754a 100644
+--- a/google/cloud/storage/google_cloud_cpp_storage.bzl
++++ b/google/cloud/storage/google_cloud_cpp_storage.bzl
+@@ -51,6 +51,7 @@ google_cloud_cpp_storage_hdrs = [
+     "internal/bucket_acl_requests.h",
+     "internal/bucket_metadata_parser.h",
+     "internal/bucket_requests.h",
++    "internal/checksum_helpers.h",
+     "internal/complex_option.h",
+     "internal/compute_engine_util.h",
+     "internal/connection_factory.h",
+diff --git a/google/cloud/storage/google_cloud_cpp_storage.cmake b/google/cloud/storage/google_cloud_cpp_storage.cmake
+index f3d70b6766817..a72af1b4f1f0e 100644
+--- a/google/cloud/storage/google_cloud_cpp_storage.cmake
++++ b/google/cloud/storage/google_cloud_cpp_storage.cmake
+@@ -78,6 +78,7 @@ add_library(
+     internal/bucket_metadata_parser.h
+     internal/bucket_requests.cc
+     internal/bucket_requests.h
++    internal/checksum_helpers.h
+     internal/complex_option.h
+     internal/compute_engine_util.cc
+     internal/compute_engine_util.h
+diff --git a/google/cloud/storage/internal/checksum_helpers.h b/google/cloud/storage/internal/checksum_helpers.h
+new file mode 100644
+index 0000000000000..19b5d439f0285
+--- /dev/null
++++ b/google/cloud/storage/internal/checksum_helpers.h
+@@ -0,0 +1,65 @@
++// Copyright 2024 Google LLC
++//
++// Licensed under the Apache License, Version 2.0 (the "License");
++// you may not use this file except in compliance with the License.
++// You may obtain a copy of the License at
++//
++//     https://www.apache.org/licenses/LICENSE-2.0
++//
++// Unless required by applicable law or agreed to in writing, software
++// distributed under the License is distributed on an "AS IS" BASIS,
++// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++// See the License for the specific language governing permissions and
++// limitations under the License.
++
++#ifndef GOOGLE_CLOUD_CPP_GOOGLE_CLOUD_STORAGE_INTERNAL_CHECKSUM_HELPERS_H
++#define GOOGLE_CLOUD_CPP_GOOGLE_CLOUD_STORAGE_INTERNAL_CHECKSUM_HELPERS_H
++
++#include "google/cloud/internal/disable_deprecation_warnings.inc"
++#include "google/cloud/options.h"
++#include "google/cloud/storage/hashing_options.h"
++#include "google/cloud/storage/options.h"
++
++namespace google {
++namespace cloud {
++namespace storage {
++GOOGLE_CLOUD_CPP_INLINE_NAMESPACE_BEGIN
++namespace internal {
++
++struct HashDisabled {
++  bool md5;
++  bool crc32c;
++};
++
++template <typename Request>
++HashDisabled GetDownloadChecksumSettings(Request const& request,
++                                         Options const& options) {
++  if (options.has<DownloadChecksumValidationOption>()) {
++    auto const algo = options.get<DownloadChecksumValidationOption>();
++    return {algo != ChecksumAlgorithm::kMD5,
++            algo != ChecksumAlgorithm::kCrc32c};
++  }
++  return {request.template GetOption<DisableMD5Hash>().value_or(false),
++          request.template GetOption<DisableCrc32cChecksum>().value_or(false)};
++}
++
++template <typename Request>
++HashDisabled GetUploadChecksumSettings(Request const& request,
++                                       Options const& options) {
++  if (options.has<UploadChecksumValidationOption>()) {
++    auto const algo = options.get<UploadChecksumValidationOption>();
++    return {algo != ChecksumAlgorithm::kMD5,
++            algo != ChecksumAlgorithm::kCrc32c};
++  }
++  return {request.template GetOption<DisableMD5Hash>().value_or(false),
++          request.template GetOption<DisableCrc32cChecksum>().value_or(false)};
++}
++
++}  // namespace internal
++GOOGLE_CLOUD_CPP_INLINE_NAMESPACE_END
++}  // namespace storage
++}  // namespace cloud
++}  // namespace google
++
++#include "google/cloud/internal/diagnostics_pop.inc"
++#endif  // GOOGLE_CLOUD_CPP_GOOGLE_CLOUD_STORAGE_INTERNAL_CHECKSUM_HELPERS_H
+diff --git a/google/cloud/storage/internal/hash_function.cc b/google/cloud/storage/internal/hash_function.cc
+index 0a5b5a77c463d..c79f7421386e9 100644
+--- a/google/cloud/storage/internal/hash_function.cc
++++ b/google/cloud/storage/internal/hash_function.cc
+@@ -12,9 +12,13 @@
+ // See the License for the specific language governing permissions and
+ // limitations under the License.
+ 
++#include "google/cloud/internal/disable_deprecation_warnings.inc"
+ #include "google/cloud/storage/internal/hash_function.h"
+ #include "google/cloud/storage/internal/hash_function_impl.h"
++#include "google/cloud/storage/internal/checksum_helpers.h"
+ #include "google/cloud/storage/internal/object_requests.h"
++#include "google/cloud/storage/options.h"
++#include "google/cloud/options.h"
+ #include <memory>
+ #include <utility>
+ 
+@@ -61,9 +65,10 @@ std::unique_ptr<HashFunction> CreateHashFunction(
+     ReadObjectRangeRequest const& request) {
+   if (request.RequiresRangeHeader()) return CreateNullHashFunction();
+ 
+-  auto const disable_crc32c =
+-      request.GetOption<DisableCrc32cChecksum>().value_or(false);
+-  auto const disable_md5 = request.GetOption<DisableMD5Hash>().value_or(false);
++  auto const settings = GetDownloadChecksumSettings(
++      request, google::cloud::internal::CurrentOptions());
++  auto const disable_md5 = settings.md5;
++  auto const disable_crc32c = settings.crc32c;
+   if (disable_md5 && disable_crc32c) {
+     return std::make_unique<NullHashFunction>();
+   }
+@@ -80,10 +85,14 @@ std::unique_ptr<HashFunction> CreateHashFunction(
+     // for previous values is lost.
+     return CreateNullHashFunction();
+   }
++
++  auto const settings = GetUploadChecksumSettings(
++      request, google::cloud::internal::CurrentOptions());
++  auto disable_md5 = DisableMD5Hash(settings.md5);
++  auto disable_crc32c = DisableCrc32cChecksum(settings.crc32c);
+   return CreateHashFunction(request.GetOption<Crc32cChecksumValue>(),
+-                            request.GetOption<DisableCrc32cChecksum>(),
+-                            request.GetOption<MD5HashValue>(),
+-                            request.GetOption<DisableMD5Hash>());
++                            disable_crc32c, request.GetOption<MD5HashValue>(),
++                            disable_md5);
+ }
+ 
+ }  // namespace internal
+@@ -91,3 +100,5 @@ GOOGLE_CLOUD_CPP_INLINE_NAMESPACE_END
+ }  // namespace storage
+ }  // namespace cloud
+ }  // namespace google
++
++#include "google/cloud/internal/diagnostics_pop.inc"
+diff --git a/google/cloud/storage/internal/hash_function.h b/google/cloud/storage/internal/hash_function.h
+index 0e17442acce05..a8c7819f4352f 100644
+--- a/google/cloud/storage/internal/hash_function.h
++++ b/google/cloud/storage/internal/hash_function.h
+@@ -19,6 +19,7 @@
+ #include "google/cloud/storage/hashing_options.h"
+ #include "google/cloud/storage/internal/hash_values.h"
+ #include "google/cloud/storage/version.h"
++#include "google/cloud/options.h"
+ #include "google/cloud/status.h"
+ #include "absl/strings/cord.h"
+ #include "absl/strings/string_view.h"
+@@ -29,6 +30,11 @@ namespace google {
+ namespace cloud {
+ namespace storage {
+ GOOGLE_CLOUD_CPP_INLINE_NAMESPACE_BEGIN
++
++struct DownloadChecksumValidationOption;
++struct UploadChecksumValidationOption;
++enum class ChecksumAlgorithm;
++
+ namespace internal {
+ 
+ class ReadObjectRangeRequest;
+diff --git a/google/cloud/storage/internal/hash_validator.cc b/google/cloud/storage/internal/hash_validator.cc
+index 3df1899b33699..931e108dca6c7 100644
+--- a/google/cloud/storage/internal/hash_validator.cc
++++ b/google/cloud/storage/internal/hash_validator.cc
+@@ -12,10 +12,15 @@
+ // See the License for the specific language governing permissions and
+ // limitations under the License.
+ 
++#include "google/cloud/internal/disable_deprecation_warnings.inc"
+ #include "google/cloud/storage/internal/hash_validator.h"
++#include "google/cloud/storage/internal/checksum_helpers.h"
++#include "google/cloud/storage/internal/hash_function.h"
+ #include "google/cloud/storage/internal/hash_validator_impl.h"
+ #include "google/cloud/storage/internal/object_requests.h"
+ #include "google/cloud/storage/object_metadata.h"
++#include "google/cloud/storage/options.h"
++#include "google/cloud/options.h"
+ #include <memory>
+ #include <string>
+ 
+@@ -52,19 +57,19 @@ std::unique_ptr<HashValidator> CreateHashValidator(
+     ReadObjectRangeRequest const& request) {
+   if (request.RequiresRangeHeader()) return CreateNullHashValidator();
+ 
+-  // `DisableMD5Hash`'s default value is `true`.
+-  auto disable_md5 = request.GetOption<DisableMD5Hash>().value_or(false);
+-  auto disable_crc32c =
+-      request.GetOption<DisableCrc32cChecksum>().value_or(false);
++  auto const settings = GetDownloadChecksumSettings(
++      request, google::cloud::internal::CurrentOptions());
++  auto const disable_md5 = settings.md5;
++  auto const disable_crc32c = settings.crc32c;
+   return CreateHashValidator(disable_md5, disable_crc32c);
+ }
+ 
+ std::unique_ptr<HashValidator> CreateHashValidator(
+     ResumableUploadRequest const& request) {
+-  // `DisableMD5Hash`'s default value is `true`.
+-  auto disable_md5 = request.GetOption<DisableMD5Hash>().value_or(false);
+-  auto disable_crc32c =
+-      request.GetOption<DisableCrc32cChecksum>().value_or(false);
++  auto const settings = GetUploadChecksumSettings(
++      request, google::cloud::internal::CurrentOptions());
++  auto const disable_md5 = settings.md5;
++  auto const disable_crc32c = settings.crc32c;
+   return CreateHashValidator(disable_md5, disable_crc32c);
+ }
+ 
+@@ -81,3 +86,5 @@ GOOGLE_CLOUD_CPP_INLINE_NAMESPACE_END
+ }  // namespace storage
+ }  // namespace cloud
+ }  // namespace google
++
++#include "google/cloud/internal/diagnostics_pop.inc"
+diff --git a/google/cloud/storage/internal/object_requests.cc b/google/cloud/storage/internal/object_requests.cc
+index 5ca59b9060e2d..d2715c3a2f2a9 100644
+--- a/google/cloud/storage/internal/object_requests.cc
++++ b/google/cloud/storage/internal/object_requests.cc
+@@ -12,12 +12,17 @@
+ // See the License for the specific language governing permissions and
+ // limitations under the License.
+ 
++#include "google/cloud/internal/disable_deprecation_warnings.inc"
+ #include "google/cloud/storage/internal/object_requests.h"
++#include "google/cloud/storage/internal/checksum_helpers.h"
+ #include "google/cloud/storage/internal/binary_data_as_debug_string.h"
++#include "google/cloud/storage/internal/hash_function.h"
+ #include "google/cloud/storage/internal/metadata_parser.h"
+ #include "google/cloud/storage/internal/object_acl_requests.h"
+ #include "google/cloud/storage/internal/object_metadata_parser.h"
+ #include "google/cloud/storage/object_metadata.h"
++#include "google/cloud/storage/options.h"
++#include "google/cloud/options.h"
+ #include "absl/strings/numbers.h"
+ #include "absl/strings/str_split.h"
+ #include <algorithm>
+@@ -218,9 +223,13 @@ InsertObjectMediaRequest::InsertObjectMediaRequest(std::string bucket_name,
+ }
+ 
+ void InsertObjectMediaRequest::reset_hash_function() {
+-  hash_function_ = CreateHashFunction(
+-      GetOption<Crc32cChecksumValue>(), GetOption<DisableCrc32cChecksum>(),
+-      GetOption<MD5HashValue>(), GetOption<DisableMD5Hash>());
++  auto const settings = GetUploadChecksumSettings(
++      *this, google::cloud::internal::CurrentOptions());
++  auto disable_md5 = DisableMD5Hash(settings.md5);
++  auto disable_crc32c = DisableCrc32cChecksum(settings.crc32c);
++  hash_function_ =
++      CreateHashFunction(GetOption<Crc32cChecksumValue>(), disable_crc32c,
++                         GetOption<MD5HashValue>(), disable_md5);
+ }
+ 
+ void InsertObjectMediaRequest::set_payload(absl::string_view payload) {
+@@ -679,3 +688,5 @@ GOOGLE_CLOUD_CPP_INLINE_NAMESPACE_END
+ }  // namespace storage
+ }  // namespace cloud
+ }  // namespace google
++
++#include "google/cloud/internal/diagnostics_pop.inc"

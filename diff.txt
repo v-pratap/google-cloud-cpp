@@ -1,0 +1,34 @@
+diff --git a/google/cloud/storage/internal/async/connection_impl_read_hash_test.cc b/google/cloud/storage/internal/async/connection_impl_read_hash_test.cc
+index d7e9db7a57..e08a239a91 100644
+--- a/google/cloud/storage/internal/async/connection_impl_read_hash_test.cc
++++ b/google/cloud/storage/internal/async/connection_impl_read_hash_test.cc
+@@ -13,17 +13,6 @@
+ // limitations under the License.
+ 
+ #include "google/cloud/storage/async/options.h"
+-
+-// TODO: Remove this when EnableMD5ValidationOption and
+-// EnableCrc32cValidationOption are removed.
+-#if defined(__GNUC__) && !defined(__clang__)
+-#pragma GCC diagnostic push
+-#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+-#elif defined(__clang__)
+-#pragma clang diagnostic push
+-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+-#endif
+-
+ #include "google/cloud/storage/internal/async/connection_impl.h"
+ #include "google/cloud/storage/internal/async/default_options.h"
+ #include "google/cloud/storage/internal/crc32c.h"
+@@ -91,11 +80,6 @@ std::ostream& operator<<(std::ostream& os, HashTestCase const& rhs) {
+     os << ", download_checksum="
+        << static_cast<int>(
+               rhs.options.get<storage::DownloadChecksumValidationOption>());
+-  } else {
+-    os << ", enable_crc32c_validation="
+-       << rhs.options.get<storage::EnableCrc32cValidationOption>();
+-    os << ", enable_md5_validation="
+-       << rhs.options.get<storage::EnableMD5ValidationOption>();
+   }
+   if (rhs.options.has<storage::UseCrc32cValueOption>()) {
+     os << ", use_crc32_value="
