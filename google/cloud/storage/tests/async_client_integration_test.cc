@@ -27,12 +27,12 @@
 #include "google/cloud/testing_util/status_matchers.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/str_join.h"
-#include "absl/strings/string_view.h"
 #include <gmock/gmock.h>
 #include <algorithm>
 #include <iterator>
 #include <numeric>
 #include <string>
+#include <string_view>
 #include <tuple>
 #include <utility>
 #include <variant>
@@ -60,8 +60,8 @@ using ::testing::VariantWith;
 // Matches a (string_view, string_view) tuple if both refer to the same buffer,
 // i.e., they have the same data pointer and size.
 MATCHER(SameBuffer, "refers to the same buffer") {
-  absl::string_view const lhs = std::get<0>(arg);
-  absl::string_view const rhs = std::get<1>(arg);
+  std::string_view const lhs = std::get<0>(arg);
+  std::string_view const rhs = std::get<1>(arg);
   if (lhs.data() == rhs.data() && lhs.size() == rhs.size()) return true;
   *result_listener << "lhs={data=" << static_cast<void const*>(lhs.data())
                    << ", size=" << lhs.size()
@@ -105,7 +105,7 @@ class AsyncClientIntegrationTest
   StatusOr<google::storage::v2::Object> CreateAppendableObject(
       AsyncClient& async, std::string const& object_name,
       std::vector<std::string> const& blocks) {
-    auto w =
+    StatusOr<std::pair<AsyncWriter, AsyncToken>> w =
         async
             .StartAppendableObjectUpload(BucketName(bucket_name()), object_name)
             .get();
@@ -114,7 +114,8 @@ class AsyncClientIntegrationTest
     AsyncToken token;
     std::tie(writer, token) = *std::move(w);
     for (std::string const& block : blocks) {
-      auto p = writer.Write(std::move(token), WritePayload(block)).get();
+      StatusOr<AsyncToken> p =
+          writer.Write(std::move(token), WritePayload(block)).get();
       if (!p) return std::move(p).status();
       token = *std::move(p);
     }
@@ -145,20 +146,21 @@ auto AlwaysRetry() {
 void ReadAndRetainCords(AsyncReader reader, AsyncToken token,
                         std::vector<absl::Cord>& retained) {
   while (token.valid()) {
-    auto p = reader.Read(std::move(token)).get();
+    StatusOr<std::pair<ReadPayload, AsyncToken>> p =
+        reader.Read(std::move(token)).get();
     ASSERT_STATUS_OK(p);
     ReadPayload payload;
     std::tie(payload, token) = *std::move(p);
 
     absl::Cord const& cord = payload.cord_contents();
     EXPECT_EQ(cord.size(), payload.size());
-    std::vector<absl::string_view> const chunks(cord.chunk_begin(),
-                                                cord.chunk_end());
+    std::vector<std::string_view> const chunks(cord.chunk_begin(),
+                                               cord.chunk_end());
     EXPECT_THAT(chunks, Pointwise(SameBuffer(), payload.contents()));
 
     absl::Cord const copy = payload.cord_contents();
-    std::vector<absl::string_view> const copy_chunks(copy.chunk_begin(),
-                                                     copy.chunk_end());
+    std::vector<std::string_view> const copy_chunks(copy.chunk_begin(),
+                                                    copy.chunk_end());
     EXPECT_THAT(copy_chunks, Pointwise(SameBuffer(), chunks));
 
     if (payload.size() == 0) continue;
@@ -384,10 +386,11 @@ TEST_F(AsyncClientIntegrationTest, StreamingReadRange) {
 
 TEST_F(AsyncClientIntegrationTest, StreamingReadCordContents) {
   auto async = AsyncClient(TestOptions());
-  auto object_name = MakeRandomObjectName();
-  auto const blocks = MakeCordTestData();
+  std::string const object_name = MakeRandomObjectName();
+  std::vector<std::string> const blocks = MakeCordTestData();
   std::string const expected = absl::StrJoin(blocks, "");
-  auto metadata = CreateAppendableObject(async, object_name, blocks);
+  StatusOr<google::storage::v2::Object> metadata =
+      CreateAppendableObject(async, object_name, blocks);
   ASSERT_STATUS_OK(metadata);
   ScheduleForDelete(*metadata);
 
@@ -395,7 +398,7 @@ TEST_F(AsyncClientIntegrationTest, StreamingReadCordContents) {
   {
     // Use a separate client, so we can verify the retained Cords outlive it.
     auto reader_client = AsyncClient(TestOptions());
-    auto r =
+    StatusOr<std::pair<AsyncReader, AsyncToken>> r =
         reader_client.ReadObject(BucketName(bucket_name()), object_name).get();
     ASSERT_STATUS_OK(r);
     AsyncReader reader;
@@ -409,10 +412,11 @@ TEST_F(AsyncClientIntegrationTest, StreamingReadCordContents) {
 
 TEST_F(AsyncClientIntegrationTest, OpenReadCordContents) {
   auto async = AsyncClient(TestOptions());
-  auto object_name = MakeRandomObjectName();
-  auto const blocks = MakeCordTestData();
+  std::string const object_name = MakeRandomObjectName();
+  std::vector<std::string> const blocks = MakeCordTestData();
   std::string const expected = absl::StrJoin(blocks, "");
-  auto metadata = CreateAppendableObject(async, object_name, blocks);
+  StatusOr<google::storage::v2::Object> metadata =
+      CreateAppendableObject(async, object_name, blocks);
   ASSERT_STATUS_OK(metadata);
   ScheduleForDelete(*metadata);
 
@@ -423,7 +427,7 @@ TEST_F(AsyncClientIntegrationTest, OpenReadCordContents) {
     auto spec = google::storage::v2::BidiReadObjectSpec{};
     spec.set_bucket(BucketName(bucket_name()).FullName());
     spec.set_object(object_name);
-    auto descriptor = reader_client.Open(spec).get();
+    StatusOr<ObjectDescriptor> descriptor = reader_client.Open(spec).get();
     ASSERT_STATUS_OK(descriptor);
     AsyncReader reader;
     AsyncToken token;

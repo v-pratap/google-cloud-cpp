@@ -20,6 +20,7 @@
 #include <gmock/gmock.h>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -182,22 +183,22 @@ TEST(ReadPayload, AccumulateEmptyIntoEmpty) {
 }
 
 TEST(ReadPayload, CordContents) {
-  auto const actual = ReadPayloadImpl::Make(absl::Cord(kQuick));
-  EXPECT_THAT(actual.cord_contents(), Eq(absl::string_view(kQuick)));
+  storage::ReadPayload const actual = ReadPayloadImpl::Make(absl::Cord(kQuick));
+  EXPECT_THAT(actual.cord_contents(), Eq(std::string_view(kQuick)));
 
   // Copying the Cord shares the underlying buffer, the data is not copied.
-  std::optional<absl::string_view> const original =
+  std::optional<std::string_view> const original =
       actual.cord_contents().TryFlat();
   ASSERT_TRUE(original.has_value());
   absl::Cord const copy = actual.cord_contents();
-  EXPECT_THAT(copy, Eq(absl::string_view(kQuick)));
-  std::optional<absl::string_view> const copied = copy.TryFlat();
+  EXPECT_THAT(copy, Eq(std::string_view(kQuick)));
+  std::optional<std::string_view> const copied = copy.TryFlat();
   ASSERT_TRUE(copied.has_value());
   EXPECT_THAT(copied->data(), Eq(original->data()));
 }
 
 TEST(ReadPayload, CordContentsFromVector) {
-  auto const actual = storage::ReadPayload(
+  storage::ReadPayload const actual = storage::ReadPayload(
       std::vector<std::string>({std::string(kQuick), std::string(kQuick)}));
   EXPECT_THAT(std::string(actual.cord_contents()),
               Eq(std::string(kQuick) + kQuick));
@@ -205,13 +206,13 @@ TEST(ReadPayload, CordContentsFromVector) {
 }
 
 TEST(ReadPayload, CordContentsMove) {
-  auto payload = ReadPayloadImpl::Make(absl::Cord(kQuick));
-  std::optional<absl::string_view> const original =
+  storage::ReadPayload payload = ReadPayloadImpl::Make(absl::Cord(kQuick));
+  std::optional<std::string_view> const original =
       payload.cord_contents().TryFlat();
   ASSERT_TRUE(original.has_value());
   absl::Cord const moved = std::move(payload).cord_contents();
-  EXPECT_THAT(moved, Eq(absl::string_view(kQuick)));
-  std::optional<absl::string_view> const flat = moved.TryFlat();
+  EXPECT_THAT(moved, Eq(std::string_view(kQuick)));
+  std::optional<std::string_view> const flat = moved.TryFlat();
   ASSERT_TRUE(flat.has_value());
   EXPECT_THAT(flat->data(), Eq(original->data()));
 }
